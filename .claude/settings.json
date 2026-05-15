@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"D:\\\\WORKS\\\\STUDY\\\\chuyen_de_KHMT\\\\BlockAgrichain-UETlab\\\\Blockagridence-Frontend\\\\blockagridence-fe\\\\src\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Get-ChildItem -Path \"D:\\\\WORKS\\\\STUDY\\\\chuyen_de_KHMT\\\\BlockAgrichain-UETlab\\\\Blockagrichain-Backend\\\\\" -Recurse -File | Select-Object FullName | Sort-Object FullName)"
+    ]
+  }
+}
