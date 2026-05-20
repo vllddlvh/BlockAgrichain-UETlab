@@ -42,6 +42,7 @@ public class BatchService {
     UserRepository userRepository;
     MasterUnitRepository masterUnitRepository;
     BatchMapper batchMapper;
+    BlockchainDataAnchorService blockchainDataAnchorService;
 
     /**
      * Lấy userId từ JWT token của người đang đăng nhập.
@@ -188,6 +189,12 @@ public class BatchService {
         batchEventRepository.save(event);
 
         log.info("Lô hàng [{}] đã chuyển sang trạng thái [{}]", batch.getBatchCode(), newStatus.name());
+
+        // Kích hoạt Data Anchor nếu đạt trạng thái READY_FOR_SALE hoặc DEPLETED
+        if (newStatus == BatchStatus.READY_FOR_SALE || newStatus == BatchStatus.DEPLETED) {
+            blockchainDataAnchorService.anchorBatchData(batch);
+        }
+
         return batchMapper.toBatchResponse(batch);
     }
 

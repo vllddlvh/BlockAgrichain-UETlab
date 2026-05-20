@@ -14,6 +14,8 @@ import java.util.UUID;
 @Repository
 public interface BatchLineageRepository extends JpaRepository<BatchLineage, BatchLineageId> {
 
+    List<BatchLineage> findByChildBatchIdInAndParentBatchIdIn(List<UUID> childIds, List<UUID> parentIds);
+
     @Query(value = """
             WITH RECURSIVE lineage AS (
                 SELECT parent_batch_id, child_batch_id, action_type, quantity

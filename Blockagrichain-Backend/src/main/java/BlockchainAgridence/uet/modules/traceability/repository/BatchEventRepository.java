@@ -12,4 +12,6 @@ public interface BatchEventRepository extends JpaRepository<BatchEvent, UUID> {
 
     // Lấy toàn bộ timeline của một lô hàng, sắp xếp mới nhất lên đầu
     List<BatchEvent> findAllByBatchIdOrderByCreatedAtDesc(UUID batchId);
+
+    List<BatchEvent> findAllByBatchIdIn(List<UUID> batchIds);
 }

@@ -50,6 +50,7 @@ public class BatchGraphService {
     UserRepository userRepository;
     MasterUnitRepository masterUnitRepository;
     BatchMapper batchMapper;
+    BlockchainDataAnchorService blockchainDataAnchorService;
 
     private UUID getAuthenticatedUserId() {
         UUID userId = SecurityUtils.getCurrentUserId();
@@ -174,6 +175,14 @@ public class BatchGraphService {
         batchEventRepository.save(childEvent);
 
         log.info("Gộp lô thành công: tạo lô mới [{}] từ {} lô cha", childBatch.getBatchCode(), parentBatches.size());
+
+        // Kích hoạt Data Anchor cho các lô cha bị DEPLETED
+        for (Batch parent : parentBatches) {
+            if (parent.getStatus() == BatchStatus.DEPLETED) {
+                blockchainDataAnchorService.anchorBatchData(parent);
+            }
+        }
+
         return batchMapper.toBatchResponse(childBatch);
     }
 
@@ -275,6 +284,12 @@ public class BatchGraphService {
         batchEventRepository.save(parentEvent);
 
         log.info("Tách lô [{}] thành {} lô con", parent.getBatchCode(), children.size());
+
+        // Kích hoạt Data Anchor nếu lô cha bị DEPLETED
+        if (parent.getStatus() == BatchStatus.DEPLETED) {
+            blockchainDataAnchorService.anchorBatchData(parent);
+        }
+
         return children.stream().map(batchMapper::toBatchResponse).toList();
     }
 
