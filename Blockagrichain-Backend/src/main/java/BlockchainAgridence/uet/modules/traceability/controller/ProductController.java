@@ -21,7 +21,7 @@ public class ProductController {
     private final ProductService productService;
 
     @PostMapping
-//    @PreAuthorize("hasRole('ORG_ADMIN')") // Chỉ Admin của tổ chức mới được tạo danh mục
+    @PreAuthorize("hasRole('ORG_ADMIN')") // Chỉ Admin của tổ chức mới được tạo danh mục
     public ApiResponse<ProductResponse> createProduct(
             @RequestBody @Valid ProductRequest request) {
 
