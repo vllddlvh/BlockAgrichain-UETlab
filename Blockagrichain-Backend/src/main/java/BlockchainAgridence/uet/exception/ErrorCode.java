@@ -69,6 +69,10 @@ public enum ErrorCode {
     TARGET_ORG_ID_NULL(1044, "Tổ chức nhận hàng không được để trống", HttpStatus.BAD_REQUEST),
     SPLIT_CHILD_QUANTITY_NULL(1045, "Số lượng tách ra không được để trống", HttpStatus.BAD_REQUEST),
     SPLIT_CHILD_QUANTITY_INVALID(1046, "Số lượng tách ra phải lớn hơn 0", HttpStatus.BAD_REQUEST),
+    MUST_PROVIDE_AT_LEAST_ONE_DOCUMENT(1048, "Phải cung cấp ít nhất một tài liệu/giấy tờ minh chứng", HttpStatus.BAD_REQUEST),
+    DOCUMENT_TYPE_BLANK(1049, "Loại tài liệu không được để trống", HttpStatus.BAD_REQUEST),
+    DOCUMENT_NAME_BLANK(1050, "Tên tài liệu không được để trống", HttpStatus.BAD_REQUEST),
+    CID_BLANK(1051, "Mã CID của tài liệu không được để trống", HttpStatus.BAD_REQUEST),
 
     // --- Lỗi liên quan đến Sản phẩm (Product) ---
     SKU_ALREADY_EXISTS(2001, "Mã SKU đã tồn tại trong tổ chức này", HttpStatus.CONFLICT),
