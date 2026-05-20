@@ -71,8 +71,15 @@ public class OrganizationService {
 
         org = organizationRepository.save(org);
 
-        // 3. Tìm Role ORG_ADMIN trong hệ thống để chuẩn bị gán
-        Role adminRole = roleRepository.findByCode("ORG_ADMIN")
+        // 3. Xác định Role cần gán dựa vào OrgType
+        String roleCode = switch (request.getOrgType()) {
+            case FARM -> "FARM_ADMIN";
+            case TRANSPORTER -> "TRANSPORT_ADMIN";
+            case RETAILER -> "RETAIL_ADMIN";
+            default -> "ORG_ADMIN";
+        };
+
+        Role adminRole = roleRepository.findByCode(roleCode)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
         // 4. Tạo tài khoản User đại diện cho Tổ chức (Org Admin)
