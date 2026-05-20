@@ -3,6 +3,7 @@ package BlockchainAgridence.uet.exception;
 
 import BlockchainAgridence.uet.shared.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -19,6 +20,18 @@ import java.util.Objects;
 @Slf4j
 public class GlobalExceptionHandler {
     private static final String MIN_ATTRIBUTE = "min";
+
+    @ExceptionHandler(value = OptimisticLockingFailureException.class)
+    ResponseEntity<ApiResponse<Void>> handlingOptimisticLockingFailure(OptimisticLockingFailureException exception) {
+        log.warn("Optimistic lock failure: {}", exception.getMessage());
+        ErrorCode errorCode = ErrorCode.OPTIMISTIC_LOCK_FAILURE;
+        return ResponseEntity
+                .status(errorCode.getStatusCode())
+                .body(ApiResponse.<Void>builder()
+                        .code(errorCode.getCode())
+                        .message(errorCode.getMessage())
+                        .build());
+    }
 
     @ExceptionHandler(value = Exception.class)
     ResponseEntity<ApiResponse<Void>> handlingUnknownException(Exception exception) {
@@ -121,4 +134,3 @@ public class GlobalExceptionHandler {
         return message.replace("{" + MIN_ATTRIBUTE + "}", minValue);
     }
 }
-

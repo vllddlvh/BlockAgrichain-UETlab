@@ -26,7 +26,7 @@ public class IpfsService {
         log.info("Bắt đầu đẩy file [{}] lên IPFS Pinata...", file.getOriginalFilename());
 
         if (file.isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_KEY); // Bạn có thể thêm mã lỗi FILE_EMPTY riêng nếu muốn
+            throw new AppException(ErrorCode.FILE_EMPTY);
         }
 
         try {
@@ -51,15 +51,15 @@ public class IpfsService {
                 log.info("Đẩy file lên IPFS thành công! CID nhận về: {}", response.getIpfsHash());
                 return response;
             } else {
-                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+                throw new AppException(ErrorCode.IPFS_UPLOAD_FAILED);
             }
 
         } catch (IOException e) {
             log.error("Lỗi đọc file khi upload lên IPFS", e);
-            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+            throw new AppException(ErrorCode.IPFS_UPLOAD_FAILED);
         } catch (Exception e) {
             log.error("Lỗi kết nối đến IPFS Pinata Gateway", e);
-            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+            throw new AppException(ErrorCode.IPFS_UPLOAD_FAILED);
         }
     }
 }

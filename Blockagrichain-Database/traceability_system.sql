@@ -172,20 +172,57 @@ CREATE TABLE reputation_logs (
 -- PHẦN 3: LÕI TRUY XUẤT NGUỒN GỐC (Event Sourcing)
 -- ==========================================
 
+CREATE TABLE products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- Thuộc về Hợp tác xã/Công ty nào
+    org_id UUID NOT NULL REFERENCES organizations(id),
+    
+    -- Thuộc phân loại nào (Rau củ, Trái cây, Chế biến...)
+    category_id UUID REFERENCES master_product_categories(id),
+    
+    -- Thông tin hiển thị cho người tiêu dùng
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    sku_code VARCHAR(100),           -- Mã hàng hóa nội bộ
+    
+    -- [CẬP NHẬT] Dùng JSONB để lưu mảng các mã CID từ IPFS
+    -- Ví dụ dữ liệu lưu vào: ["QmẢnhĐạiDiện...", "QmẢnhMặtSau...", "QmẢnhThànhPhần..."]
+    image_cids JSONB,          
+    
+    -- Thông tin phụ đính kèm (Thành phần, điều kiện bảo quản, hạn sử dụng mặc định...)
+    attributes JSONB, 
+    
+    -- Audit fields
+    version BIGINT DEFAULT 0,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP
+);
+CREATE INDEX idx_products_org_id ON products(org_id);
+
 -- 11. BẢNG LÔ HÀNG (Định danh tĩnh và Sở hữu)
 CREATE TABLE batches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     batch_code VARCHAR(100) UNIQUE NOT NULL, -- Mã QR hiển thị
+    product_id UUID NOT NULL REFERENCES products(id),
     creator_org_id UUID REFERENCES organizations(id) NOT NULL,
     current_owner_org_id UUID REFERENCES organizations(id) NOT NULL, 
     
     product_category_id UUID REFERENCES master_product_categories(id),
     product_type VARCHAR(50) NOT NULL,
     CONSTRAINT chk_product_type CHECK (product_type IN ('RAW_MATERIAL', 'PROCESSED_FOOD')),
-    
+    status VARCHAR(50) NOT NULL DEFAULT 'CREATED',
     is_active BOOLEAN DEFAULT TRUE, 
     onchain_hash VARCHAR(255), -- Chữ ký điện tử / TxHash khóa trên Blockchain
-    
+
+    -- [CẬP NHẬT] Mass Balance
+    initial_quantity NUMERIC(18, 3) NOT NULL DEFAULT 0,
+    current_quantity NUMERIC(18, 3) NOT NULL DEFAULT 0,
+    unit_id UUID REFERENCES master_units(id),
+
     version INT DEFAULT 0,
     is_deleted BOOLEAN DEFAULT FALSE,
     created_by VARCHAR(255),
@@ -205,7 +242,8 @@ CREATE TABLE batch_events (
     CONSTRAINT chk_event_type CHECK (event_type IN (
         'CREATED', 'FARMING_ACTIVITY', 'PROCESSING', 
         'TRANSPORTING', 'STORED_AND_VERIFIED', 'REJECTED', 
-        'TRANSFORMED', 'SPLIT', 'MERGED'
+        'TRANSFORMED', 'SPLIT', 'MERGED',
+        'CONSUMED', 'CREATED_FROM_MERGE', 'CREATED_FROM_SPLIT'
     )),
     
     gps_latitude DECIMAL(10, 8),
@@ -228,7 +266,8 @@ CREATE TABLE batch_lineage (
     
     action_type VARCHAR(50) NOT NULL,
     CONSTRAINT chk_action_type CHECK (action_type IN ('MERGE', 'SPLIT')),
-    
+    quantity NUMERIC(18, 3) NOT NULL,
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (parent_batch_id, child_batch_id)
 );
@@ -312,27 +351,3 @@ CREATE TABLE token_blacklist (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_token_blacklist_token ON token_blacklist(token);
-
--- ==========================================
--- PHẦN 6: SEED DATA (Dữ liệu mẫu cơ bản)
--- ==========================================
-
--- -- Seed Permissions
--- INSERT INTO permissions (id, code, name, module, description) VALUES
--- (gen_random_uuid(), 'ORG_UPDATE', 'Cập nhật thông tin tổ chức', 'IDENTITY', 'Quyền cập nhật thông tin chung của tổ chức'),
--- (gen_random_uuid(), 'USER_CREATE', 'Tạo tài khoản nhân viên', 'IDENTITY', 'Quyền tạo mới tài khoản nhân viên trong tổ chức'),
--- (gen_random_uuid(), 'BATCH_CREATE', 'Tạo lô hàng', 'TRACEABILITY', 'Quyền khởi tạo lô hàng nông sản mới')
--- ON CONFLICT (code) DO NOTHING;
-
--- -- Seed Roles
--- INSERT INTO roles (id, code, name, description) VALUES
--- (gen_random_uuid(), 'SYSTEM_ADMIN', 'Quản trị viên hệ thống', 'Quản trị toàn bộ hệ thống Blockchain Agridence'),
--- (gen_random_uuid(), 'ORG_ADMIN', 'Quản trị viên tổ chức', 'Quản trị viên đại diện cho tổ chức (Farm, Factory, v.v.)'),
--- (gen_random_uuid(), 'WAREHOUSE_STAFF', 'Nhân viên kho', 'Nhân viên thao tác với lô hàng trong kho')
--- ON CONFLICT (code) DO NOTHING;
-
--- -- Seed Role-Permissions Mapping (Giả lập cấp quyền cho ORG_ADMIN)
--- INSERT INTO role_permissions (role_id, permission_id)
--- SELECT r.id, p.id FROM roles r, permissions p
--- WHERE r.code = 'ORG_ADMIN' AND p.code IN ('ORG_UPDATE', 'USER_CREATE')
--- ON CONFLICT DO NOTHING;
