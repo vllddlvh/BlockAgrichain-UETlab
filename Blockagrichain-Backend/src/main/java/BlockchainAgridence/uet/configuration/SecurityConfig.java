@@ -33,8 +33,12 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.authorizeHttpRequests(request -> request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS)
-                .permitAll()
+        httpSecurity.cors(org.springframework.security.config.Customizer.withDefaults());
+
+        httpSecurity.authorizeHttpRequests(request -> request
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
                 .anyRequest()
                 .authenticated());
 
