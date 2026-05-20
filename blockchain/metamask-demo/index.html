@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlockAgrichain — MetaMask Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: monospace;
+      background: #0f1117;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 680px;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      color: #888;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      color: #fff;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2a2d3a;
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+
+    .card h3 {
+      font-size: 0.75rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 14px;
+    }
+
+    button {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+      font-family: monospace;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button:hover:not(:disabled) { background: #2563eb; }
+
+    button:disabled {
+      background: #2a2d3a;
+      color: #555;
+      cursor: not-allowed;
+    }
+
+    button.connected {
+      background: #16a34a;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid #2a2d3a;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-family: monospace;
+      font-size: 0.9rem;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="text"]:focus { border-color: #3b82f6; }
+
+    .field-label {
+      font-size: 0.75rem;
+      color: #666;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .value-box {
+      background: #0f1117;
+      border: 1px solid #2a2d3a;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 0.78rem;
+      color: #a0a0a0;
+      word-break: break-all;
+      min-height: 36px;
+      margin-bottom: 12px;
+    }
+
+    .value-box.highlight { color: #60a5fa; }
+    .value-box.tx        { color: #34d399; }
+
+    #status {
+      font-size: 0.85rem;
+      padding: 10px 12px;
+      border-radius: 6px;
+      min-height: 36px;
+      background: #1a1d27;
+      border: 1px solid #2a2d3a;
+      color: #888;
+    }
+
+    #status.success { color: #34d399; border-color: #16a34a; }
+    #status.error   { color: #f87171; border-color: #dc2626; }
+    #status.info    { color: #60a5fa; border-color: #3b82f6; }
+
+    .step-num {
+      display: inline-block;
+      background: #3b82f6;
+      color: #fff;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .network-info {
+      font-size: 0.72rem;
+      color: #555;
+      margin-top: 10px;
+    }
+
+    .network-info span { color: #888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <h1>BlockAgrichain</h1>
+    <h2>HashStorage — MetaMask Demo</h2>
+
+    <!-- Step 1 -->
+    <div class="card">
+      <h3><span class="step-num">1</span>Connect Wallet</h3>
+      <button id="btn-connect">Connect MetaMask</button>
+      <div class="network-info">
+        Network: <span>Hardhat Local</span> &nbsp;|&nbsp;
+        RPC: <span>http://127.0.0.1:8545</span> &nbsp;|&nbsp;
+        Chain ID: <span>31337</span>
+      </div>
+      <br />
+      <span class="field-label">Connected address</span>
+      <div class="value-box" id="wallet-address">—</div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="card">
+      <h3><span class="step-num">2</span>Enter Data to Hash</h3>
+      <input
+        type="text"
+        id="input-data"
+        placeholder="e.g. Rau cải Đà Lạt, 2026-05-14"
+      />
+      <button id="btn-store" disabled>Hash &amp; Store on Blockchain</button>
+    </div>
+
+    <!-- Step 3: Results -->
+    <div class="card">
+      <h3><span class="step-num">3</span>Result</h3>
+
+      <span class="field-label">SHA-256 Hash (generated)</span>
+      <div class="value-box highlight" id="generated-hash">—</div>
+
+      <span class="field-label">Transaction Hash (txHash)</span>
+      <div class="value-box tx" id="tx-hash">—</div>
+
+      <span class="field-label">Status</span>
+      <div id="status">Waiting...</div>
+    </div>
+
+  </div>
+
+  <!-- ethers.js v6 via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
