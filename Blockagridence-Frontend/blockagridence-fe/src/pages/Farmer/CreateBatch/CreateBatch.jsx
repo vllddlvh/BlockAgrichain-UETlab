@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import MetaMaskModal from '../../../components/MetaMaskModal/MetaMaskModal';
 import masterDataService from '../../../services/api/masterDataService';
 import productService from '../../../services/api/productService';
 import batchService from '../../../services/api/batchService';
@@ -11,7 +10,6 @@ export default function CreateBatch() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef(null);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [status, setStatus] = useState('idle'); // idle, uploading, signing, success
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -39,20 +37,16 @@ export default function CreateBatch() {
     queryFn: productService.getProducts
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!productId || !unitId || !initialQuantity || !plantingDate) {
       setErrorMsg('Vui lòng điền đầy đủ các thông tin bắt buộc.');
       return;
     }
     setErrorMsg('');
-    setIsModalOpen(true);
-  };
 
-  const handleSign = async () => {
     try {
       setStatus('uploading');
-      setIsModalOpen(false); // Đóng modal MetaMask sau khi ký
       
       let imageCid = null;
       if (selectedFile) {
@@ -262,16 +256,10 @@ export default function CreateBatch() {
 
         <div className="form-actions">
           <button type="submit" className="btn-primary btn-large" disabled={status !== 'idle'}>
-            {status === 'uploading' ? 'Đang tải ảnh...' : status === 'signing' ? 'Đang lưu Dữ liệu...' : 'Khởi tạo & Ký Blockchain'}
+            {status === 'uploading' ? 'Đang tải ảnh...' : status === 'signing' ? 'Đang lưu Dữ liệu...' : 'Khởi tạo Lô hàng'}
           </button>
         </div>
       </form>
-
-      <MetaMaskModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)}
-        onSign={handleSign}
-      />
     </div>
   );
 }

@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import batchService from '../../../services/api/batchService';
+import MetaMaskModal from '../../../components/MetaMaskModal/MetaMaskModal';
 import './BatchDetail.css'; // Giữ nguyên file CSS cũ
 
 export default function Batches() {
   const queryClient = useQueryClient();
   const [selectedBatch, setSelectedBatch] = useState(null);
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [hashToSign, setHashToSign] = useState(null);
+  const [signingBatchId, setSigningBatchId] = useState(null);
 
   // Fetch danh sách lô hàng
   const { data: batches = [], isLoading } = useQuery({
@@ -18,8 +23,16 @@ export default function Batches() {
     mutationFn: async ({ id, status }) => {
       return await batchService.updateBatchStatus(id, status);
     },
-    onSuccess: () => {
+    onSuccess: (updatedBatch) => {
       queryClient.invalidateQueries({ queryKey: ['batches'] });
+      setSelectedBatch(updatedBatch);
+      
+      // Nếu trạng thái chuyển sang Sẵn sàng bán, backend sẽ gen ra onchainHash
+      if ((updatedBatch.status === 'READY_FOR_SALE' || updatedBatch.status === 'DEPLETED') && updatedBatch.onchainHash) {
+        setSigningBatchId(updatedBatch.batchCode);
+        setHashToSign(updatedBatch.onchainHash);
+        setIsModalOpen(true);
+      }
     }
   });
 
@@ -40,6 +53,11 @@ export default function Batches() {
 
   const handleUpdateStatus = (batch, newStatus) => {
     updateStatusMutation.mutate({ id: batch.id, status: newStatus });
+  };
+
+  const handleSignSuccess = (txHash) => {
+    setIsModalOpen(false);
+    alert(`Đã ký và lưu lên mạng Blockchain thành công!\nTx Hash: ${txHash}`);
   };
 
   return (
@@ -104,9 +122,17 @@ export default function Batches() {
                 <button 
                   className="btn-secondary" 
                   onClick={() => handleUpdateStatus(selectedBatch, 'PACKAGED')}
-                  disabled={updateStatusMutation.isPending || selectedBatch.status === 'PACKAGED'}
+                  disabled={updateStatusMutation.isPending || selectedBatch.status === 'PACKAGED' || selectedBatch.status === 'READY_FOR_SALE'}
                 >
                   📦 Đóng gói
+                </button>
+                <button 
+                  className="btn-secondary" 
+                  style={{ background: 'var(--primary)', color: 'white' }}
+                  onClick={() => handleUpdateStatus(selectedBatch, 'READY_FOR_SALE')}
+                  disabled={updateStatusMutation.isPending || selectedBatch.status === 'READY_FOR_SALE'}
+                >
+                  🚚 Sẵn sàng xuất bán
                 </button>
               </div>
 
@@ -146,6 +172,14 @@ export default function Batches() {
           )}
         </div>
       )}
+
+      <MetaMaskModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        onSignSuccess={handleSignSuccess}
+        batchId={signingBatchId}
+        onchainHash={hashToSign}
+      />
     </div>
   );
 }
