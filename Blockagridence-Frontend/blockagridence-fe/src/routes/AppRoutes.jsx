@@ -18,8 +18,9 @@ import Dashboard from '../pages/Dashboard/Dashboard';
 
 // Farmer pages
 import Certificates from '../pages/Farmer/Certificates/Certificates';
+import Products from '../pages/Farmer/Products/Products';
 import CreateBatch from '../pages/Farmer/CreateBatch/CreateBatch';
-import BatchDetail from '../pages/Farmer/BatchDetail/BatchDetail';
+import Batches from '../pages/Farmer/BatchDetail/Batches';
 
 // Transporter pages
 import TransferOwnership from '../pages/Transporter/TransferOwnership/TransferOwnership';
@@ -92,6 +93,14 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/products"
+        element={
+          <ProtectedRoute requiredRoles={FARM_ROLES}>
+            <DashboardLayout><Products /></DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/create-batch"
         element={
           <ProtectedRoute requiredRoles={FARM_ROLES}>
@@ -103,7 +112,7 @@ export default function AppRoutes() {
         path="/batch-detail"
         element={
           <ProtectedRoute requiredRoles={FARM_ROLES}>
-            <DashboardLayout><BatchDetail /></DashboardLayout>
+            <DashboardLayout><Batches /></DashboardLayout>
           </ProtectedRoute>
         }
       />

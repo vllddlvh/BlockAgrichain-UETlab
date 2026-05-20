@@ -205,4 +205,13 @@ public class BatchService {
                 .map(batchMapper::toBatchEventResponse)
                 .toList();
     }
+
+    @Transactional(readOnly = true)
+    public List<BatchResponse> getBatchesByOrgId() {
+        UUID orgId = getAuthenticatedOrgId();
+        return batchRepository.findAllByCurrentOwnerOrgId(orgId)
+                .stream()
+                .map(batchMapper::toBatchResponse)
+                .toList();
+    }
 }

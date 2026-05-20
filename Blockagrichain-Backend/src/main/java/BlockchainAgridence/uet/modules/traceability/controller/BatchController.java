@@ -63,6 +63,17 @@ public class BatchController {
                 .build();
     }
 
+    @GetMapping
+    @PreAuthorize("hasAuthority('BATCH_VIEW_ALL') or hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN')") 
+    // Cho phép các role quản lý xem danh sách lô hàng của tổ chức
+    public ApiResponse<List<BatchResponse>> getBatches() {
+        return ApiResponse.<List<BatchResponse>>builder()
+                .code(1000)
+                .message("Lấy danh sách lô hàng thành công")
+                .body(batchService.getBatchesByOrgId())
+                .build();
+    }
+
 
     // CÁC API PUBLIC (KHÔNG CẦN XÁC THỰC - DÙNG CHO APP QUÉT MÃ QR)
     @GetMapping("/{batchId}")
