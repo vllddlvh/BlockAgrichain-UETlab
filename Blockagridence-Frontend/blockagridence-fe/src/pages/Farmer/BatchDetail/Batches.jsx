@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import batchService from '../../../services/api/batchService';
 import MetaMaskModal from '../../../components/MetaMaskModal/MetaMaskModal';
+import { QRCodeSVG } from 'qrcode.react';
 import './BatchDetail.css'; // Giữ nguyên file CSS cũ
 
 export default function Batches() {
@@ -58,6 +59,30 @@ export default function Batches() {
   const handleSignSuccess = (txHash) => {
     setIsModalOpen(false);
     alert(`Đã ký và lưu lên mạng Blockchain thành công!\nTx Hash: ${txHash}`);
+  };
+
+  const downloadQRCode = () => {
+    if (!selectedBatch) return;
+    const svg = document.getElementById("batch-qrcode-" + selectedBatch.id);
+    if (!svg) return;
+    
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      const pngFile = canvas.toDataURL("image/png");
+      const downloadLink = document.createElement("a");
+      downloadLink.download = `QR_${selectedBatch.batchCode}.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
   };
 
   return (
@@ -139,29 +164,31 @@ export default function Batches() {
               <h3>Mã QR Tem Nhãn</h3>
               <p className="text-muted">In và dán mã QR này lên bao bì sản phẩm để người dùng truy xuất.</p>
               
-              <div className="qr-container">
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://localhost:5173/trace/${selectedBatch.id}`} 
-                  alt="QR Code" 
-                  className="qr-image"
+              <div className="qr-container" style={{ background: 'white', padding: '16px', display: 'inline-block', borderRadius: '8px', margin: '20px 0', border: '1px solid #eee' }}>
+                <QRCodeSVG 
+                  id={`batch-qrcode-${selectedBatch.id}`}
+                  value={`${window.location.origin}/trace/${selectedBatch.id}`} 
+                  size={200} 
+                  level={"H"}
+                  includeMargin={true}
                 />
               </div>
 
               <div className="qr-actions">
-                <a href={`http://localhost:5173/trace/${selectedBatch.id}`} target="_blank" rel="noreferrer" className="btn-secondary">
+                <a href={`${window.location.origin}/trace/${selectedBatch.id}`} target="_blank" rel="noreferrer" className="btn-secondary">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
                   </svg>
                   Xem Public
                 </a>
-                <button className="btn-primary">
+                <button className="btn-primary" onClick={downloadQRCode}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="6 9 6 2 18 2 18 9"></polyline>
                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                     <rect x="6" y="14" width="12" height="8"></rect>
                   </svg>
-                  In Tem
+                  Tải Tem QR
                 </button>
               </div>
             </div>

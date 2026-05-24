@@ -4,6 +4,7 @@ import masterDataService from '../../../services/api/masterDataService';
 import productService from '../../../services/api/productService';
 import batchService from '../../../services/api/batchService';
 import ipfsService from '../../../services/api/ipfsService';
+import { QRCodeSVG } from 'qrcode.react';
 import './CreateBatch.css';
 
 export default function CreateBatch() {
@@ -12,6 +13,7 @@ export default function CreateBatch() {
 
   const [status, setStatus] = useState('idle'); // idle, uploading, signing, success
   const [errorMsg, setErrorMsg] = useState('');
+  const [createdBatchId, setCreatedBatchId] = useState('');
 
   // Form State
   const [batchCode, setBatchCode] = useState(`BATCH-${new Date().getTime()}`);
@@ -65,6 +67,7 @@ export default function CreateBatch() {
         unitId
       };
       const createdBatch = await batchService.createBatch(batchRequest);
+      setCreatedBatchId(createdBatch.id);
 
       // 2. Bắn sự kiện (Event) khởi tạo đầu tiên kèm metadata
       const eventRequest = {
@@ -103,10 +106,33 @@ export default function CreateBatch() {
     setFertilizer('');
     setSelectedFile(null);
     setStatus('idle');
+    setCreatedBatchId('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const downloadQRCode = () => {
+    const svg = document.getElementById("batch-qrcode");
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      const pngFile = canvas.toDataURL("image/png");
+      const downloadLink = document.createElement("a");
+      downloadLink.download = `QR_${batchCode}.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+  };
+
   if (status === 'success') {
+    const traceUrl = `${window.location.origin}/trace/${createdBatchId}`;
     return (
       <div className="page-container success-container">
         <div className="success-icon">
@@ -118,7 +144,27 @@ export default function CreateBatch() {
         <h2>Khởi tạo Lô hàng Thành công!</h2>
         <p>Mã lô hàng: <strong>{batchCode}</strong></p>
         <p>Thông tin và hình ảnh hiện trường đã được ghi nhận an toàn.</p>
-        <button className="btn-primary mt-3" onClick={resetForm}>Tạo lô hàng mới</button>
+        
+        <div className="qr-code-section" style={{ margin: '20px 0', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <p style={{ marginBottom: '10px', color: '#7f8c8d' }}>Mã QR truy xuất nguồn gốc:</p>
+          <div style={{ background: 'white', padding: '16px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+            <QRCodeSVG 
+              id="batch-qrcode" 
+              value={traceUrl} 
+              size={200} 
+              level={"H"}
+              includeMargin={true}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+            <button className="btn-secondary" onClick={downloadQRCode} style={{ padding: '10px 20px', borderRadius: '6px', border: '1px solid #ccc', background: 'white', cursor: 'pointer' }}>
+              Tải mã QR
+            </button>
+            <button className="btn-primary" onClick={resetForm} style={{ padding: '10px 20px', borderRadius: '6px', background: '#27ae60', color: 'white', border: 'none', cursor: 'pointer' }}>
+              Tạo lô hàng mới
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

@@ -15,6 +15,7 @@ import Register from '../pages/Auth/Register';
 
 // Public page (Consumer QR Scan)
 import Dashboard from '../pages/Dashboard/Dashboard';
+import CheckQR from '../pages/public/CheckQR/CheckQR';
 
 // Farmer pages
 import Certificates from '../pages/Farmer/Certificates/Certificates';
@@ -51,6 +52,15 @@ export default function AppRoutes() {
         element={
           <PublicLayout>
             <Dashboard />
+          </PublicLayout>
+        }
+      />
+      
+      <Route
+        path="/checkQR"
+        element={
+          <PublicLayout>
+            <CheckQR />
           </PublicLayout>
         }
       />
