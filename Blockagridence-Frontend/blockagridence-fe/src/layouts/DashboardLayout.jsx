@@ -97,15 +97,7 @@ export default function DashboardLayout({ children }) {
                   <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                   <line x1="12" y1="22.08" x2="12" y2="12"></line>
                 </svg>
-                Chuyển giao Sở hữu
-              </Link>
-              <Link to="/update-transit" className={`nav-item ${navActive('/update-transit')}`}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="1" y="3" width="15" height="13"></rect>
-                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                  <circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle>
-                </svg>
-                Nhật ký Hành trình
+                Giao nhận & Hành trình
               </Link>
             </nav>
           </div>

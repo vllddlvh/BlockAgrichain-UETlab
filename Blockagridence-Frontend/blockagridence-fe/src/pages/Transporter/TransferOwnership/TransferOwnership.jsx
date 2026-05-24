@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import MetaMaskModal from '../../../components/MetaMaskModal/MetaMaskModal';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import batchService from '../../../services/api/batchService';
+import ipfsService from '../../../services/api/ipfsService';
 import './TransferOwnership.css';
 
 export default function TransferOwnership() {
@@ -9,6 +10,14 @@ export default function TransferOwnership() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [status, setStatus] = useState('idle');
   const [isLoading, setIsLoading] = useState(false);
+  const [actionType, setActionType] = useState('TRANSFER'); // 'TRANSFER' or 'UPDATE_TRANSIT'
+
+  // States for Transit Update
+  const [temperature, setTemperature] = useState('');
+  const [humidity, setHumidity] = useState('');
+  const [gps, setGps] = useState('11.9404° N, 108.4583° E');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     let scanner = null;
@@ -34,10 +43,17 @@ export default function TransferOwnership() {
 
             const batch = await batchService.getBatchDetail(batchId);
             setScannedBatch(batch);
+            
+            // Logic to determine action type
+            // Assuming if it's already IN_TRANSIT, we just update checkpoints
+            if (batch.status === 'IN_TRANSIT') {
+               setActionType('UPDATE_TRANSIT');
+            } else {
+               setActionType('TRANSFER');
+            }
           } catch (error) {
             console.error(error);
             alert('Không tìm thấy dữ liệu lô hàng từ mã QR này!');
-            // Re-init scanner if failed so user can try again
             setTimeout(initScanner, 500);
           } finally {
             setIsLoading(false);
@@ -54,24 +70,53 @@ export default function TransferOwnership() {
     }
   }, [scannedBatch, status]);
 
-  const handleAccept = () => {
-    setIsModalOpen(true);
+  const handleActionClick = (e) => {
+    if (e) e.preventDefault();
+    if (actionType === 'UPDATE_TRANSIT') {
+      // Just simulate blockchain anchor for transit update via the same modal
+      // Or in a real app, maybe transit events don't need a separate anchor if not required
+      // But we will use the modal for consistency
+      setIsModalOpen(true);
+    } else {
+      setIsModalOpen(true);
+    }
   };
 
   const handleSign = async () => {
     setStatus('signing');
     try {
-      // Cập nhật trạng thái thành Đang vận chuyển
-      await batchService.updateBatchStatus(scannedBatch.id, 'IN_TRANSIT');
-      
-      // Ghi nhận sự kiện chuyển giao
-      await batchService.appendEvent(scannedBatch.id, {
-        eventType: 'TRANSPORT',
-        metadata: {
-          action: 'Nhận bàn giao vận chuyển',
-          status: 'Đã nhận hàng'
+      if (actionType === 'TRANSFER') {
+        // Cập nhật trạng thái thành Đang vận chuyển
+        await batchService.updateBatchStatus(scannedBatch.id, 'IN_TRANSIT');
+        
+        // Ghi nhận sự kiện chuyển giao
+        await batchService.appendEvent(scannedBatch.id, {
+          eventType: 'TRANSPORT',
+          metadata: {
+            action: 'Nhận bàn giao vận chuyển',
+            status: 'Bắt đầu hành trình'
+          }
+        });
+      } else {
+        // UPDATE_TRANSIT logic
+        let imageCid = null;
+        if (selectedImage) {
+          const ipfsRes = await ipfsService.uploadFile(selectedImage);
+          imageCid = ipfsRes.ipfsHash;
         }
-      });
+
+        await batchService.appendEvent(scannedBatch.id, {
+          eventType: 'TRANSPORT',
+          gpsLatitude: 11.9404,
+          gpsLongitude: 108.4583,
+          imageCids: imageCid ? [imageCid] : [],
+          metadata: {
+            action: 'Cập nhật Trạm tiếp theo',
+            temperature: `${temperature}°C`,
+            humidity: `${humidity}%`
+          }
+        });
+      }
 
       setIsModalOpen(false);
       setStatus('success');
@@ -83,6 +128,14 @@ export default function TransferOwnership() {
     }
   };
 
+  const resetScanner = () => {
+    setStatus('idle');
+    setScannedBatch(null);
+    setTemperature('');
+    setHumidity('');
+    setSelectedImage(null);
+  };
+
   if (status === 'success') {
     return (
       <div className="page-container success-container">
@@ -92,9 +145,9 @@ export default function TransferOwnership() {
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
           </svg>
         </div>
-        <h2>Chuyển giao Sở hữu Thành công!</h2>
-        <p>Quyền sở hữu lô hàng <strong>#{scannedBatch?.batchCode}</strong> đã được chuyển giao an toàn trên Blockchain.</p>
-        <button className="btn-primary mt-3" onClick={() => { setStatus('idle'); setScannedBatch(null); }}>Tiếp tục Quét QR</button>
+        <h2>{actionType === 'TRANSFER' ? 'Chuyển giao Sở hữu Thành công!' : 'Cập nhật Hành trình Thành công!'}</h2>
+        <p>Bản ghi cập nhật lô hàng <strong>#{scannedBatch?.batchCode}</strong> đã được lưu an toàn trên Blockchain.</p>
+        <button className="btn-primary mt-3" onClick={resetScanner}>Tiếp tục Quét QR</button>
       </div>
     );
   }
@@ -102,8 +155,8 @@ export default function TransferOwnership() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">Chuyển giao Sở hữu (Nhà Vận Chuyển)</h1>
-        <p className="page-subtitle">Quét QR nhận bàn giao lô hàng từ Nông dân (Ghi nhận On-chain)</p>
+        <h1 className="page-title">Giao nhận & Hành trình (Nhà Vận Chuyển)</h1>
+        <p className="page-subtitle">Quét QR để nhận bàn giao lô hàng hoặc cập nhật thông tin trên đường đi</p>
       </div>
 
       <div className="transfer-grid">
@@ -124,7 +177,7 @@ export default function TransferOwnership() {
           {scannedBatch && (
             <div style={{ padding: '2rem', textAlign: 'center', background: '#e8f8f5', borderRadius: '8px', color: '#27ae60' }}>
               <p><strong>Quét thành công!</strong></p>
-              <button className="btn-secondary mt-2" onClick={() => setScannedBatch(null)}>Quét lại</button>
+              <button className="btn-secondary mt-2" onClick={resetScanner}>Quét lại lô khác</button>
             </div>
           )}
         </div>
@@ -143,26 +196,38 @@ export default function TransferOwnership() {
                 <span className="info-value">{scannedBatch.product?.name}</span>
               </div>
               <div className="info-row">
-                <span className="info-label">Người bàn giao:</span>
-                <span className="info-value">{scannedBatch.currentOwnerOrg?.name}</span>
+                <span className="info-label">Trạng thái hiện tại:</span>
+                <span className="info-value font-semibold" style={{ color: actionType === 'UPDATE_TRANSIT' ? '#f39c12' : '#2980b9' }}>
+                  {scannedBatch.status}
+                </span>
               </div>
-              <div className="info-row">
-                <span className="info-label">Khối lượng:</span>
-                <span className="info-value">{scannedBatch.currentQuantity} {scannedBatch.unit?.code}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Ngày quét:</span>
-                <span className="info-value">{new Date().toLocaleString('vi-VN')}</span>
-              </div>
-
-              <div className="action-area mt-4">
-                <p className="warning-note">
-                  Bằng việc xác nhận, bạn sẽ chính thức nhận quyền sở hữu lô hàng này trên Blockchain.
-                </p>
-                <button className="btn-primary w-100" onClick={handleAccept}>
-                  Xác nhận Nhận hàng (Ký Ví)
-                </button>
-              </div>
+              
+              {actionType === 'TRANSFER' ? (
+                <div className="action-area mt-4">
+                  <p className="warning-note">Lô hàng này đã sẵn sàng để bàn giao. Bằng việc xác nhận, bạn sẽ chính thức nhận quyền sở hữu để vận chuyển lô hàng này.</p>
+                  <button className="btn-primary w-100" onClick={handleActionClick}>Xác nhận Nhận hàng (Ký Ví)</button>
+                </div>
+              ) : (
+                <form className="transit-form mt-4" onSubmit={handleActionClick} style={{ borderTop: '1px solid #eee', paddingTop: '15px' }}>
+                  <h4 style={{ marginBottom: '15px', color: '#2c3e50' }}>Cập nhật Trạm kiểm tra</h4>
+                  <div className="form-group" style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#7f8c8d' }}>Nhiệt độ (°C)</label>
+                    <input type="number" placeholder="Vd: 4" value={temperature} onChange={e => setTemperature(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#7f8c8d' }}>Độ ẩm (%)</label>
+                    <input type="number" placeholder="Vd: 85" value={humidity} onChange={e => setHumidity(e.target.value)} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#7f8c8d' }}>Ảnh cập nhật (IPFS)</label>
+                    <input type="file" ref={fileInputRef} onChange={e => setSelectedImage(e.target.files[0])} accept="image/*" style={{ display: 'block', width: '100%', fontSize: '0.9rem' }} />
+                  </div>
+                  
+                  <button type="submit" className="btn-primary w-100 mt-3" disabled={status === 'signing'}>
+                    {status === 'signing' ? 'Đang tải...' : 'Ghi nhận Nhật ký (Ký Ví)'}
+                  </button>
+                </form>
+              )}
             </div>
           ) : (
             <div className="empty-state">
@@ -177,6 +242,10 @@ export default function TransferOwnership() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
         onSignSuccess={handleSign}
+        // Use mock data for signing transit events if needed, or don't ask for MM for simple events
+        // Since we are reusing the modal, we can pass dummy hashes if not anchoring
+        batchId={scannedBatch?.batchCode}
+        onchainHash={scannedBatch?.onchainHash || '0x' + '1'.repeat(64)}
       />
     </div>
   );
