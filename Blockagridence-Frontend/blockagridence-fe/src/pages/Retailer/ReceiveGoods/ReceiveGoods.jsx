@@ -1,37 +1,85 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import MetaMaskModal from '../../../components/MetaMaskModal/MetaMaskModal';
+import { Html5QrcodeScanner } from 'html5-qrcode';
+import batchService from '../../../services/api/batchService';
 import './ReceiveGoods.css';
 
 export default function ReceiveGoods() {
-  const [isScanning, setIsScanning] = useState(false);
   const [scannedBatch, setScannedBatch] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [status, setStatus] = useState('idle');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const startScan = () => {
-    setIsScanning(true);
-    setTimeout(() => {
-      setIsScanning(false);
-      setScannedBatch({
-        id: 'BATCH-88902',
-        product: 'Dâu tây New Zealand',
-        transporter: 'DV Vận chuyển ABC',
-        tempCondition: 'Đạt chuẩn (4°C)',
-        date: '13/05/2026'
-      });
-    }, 2000);
-  };
+  useEffect(() => {
+    let scanner = null;
+    if (!scannedBatch && status === 'idle') {
+      const initScanner = () => {
+        scanner = new Html5QrcodeScanner('reader-receive', {
+          qrbox: { width: 250, height: 250 },
+          fps: 5,
+        }, false);
+
+        scanner.render(async (result) => {
+          scanner.clear();
+          setIsLoading(true);
+          try {
+            let batchId = result;
+            try {
+              const url = new URL(result);
+              if (url.pathname.startsWith('/trace/')) {
+                 batchId = url.pathname.split('/').pop();
+              }
+            } catch(e) {}
+            if (batchId.startsWith('/trace/')) batchId = batchId.replace('/trace/', '');
+
+            const batch = await batchService.getBatchDetail(batchId);
+            setScannedBatch(batch);
+          } catch (error) {
+            console.error(error);
+            alert('Không tìm thấy dữ liệu lô hàng từ mã QR này!');
+            setTimeout(initScanner, 500);
+          } finally {
+            setIsLoading(false);
+          }
+        }, () => {});
+      };
+
+      const timer = setTimeout(initScanner, 100);
+
+      return () => {
+        clearTimeout(timer);
+        if (scanner) scanner.clear().catch(e => console.error(e));
+      };
+    }
+  }, [scannedBatch, status]);
 
   const handleAccept = () => {
     setIsModalOpen(true);
   };
 
-  const handleSign = () => {
+  const handleSign = async () => {
     setStatus('signing');
-    setTimeout(() => {
+    try {
+      // Cập nhật trạng thái thành Nhập kho / Sẵn sàng lên kệ
+      await batchService.updateBatchStatus(scannedBatch.id, 'ON_SHELF');
+      
+      // Ghi nhận sự kiện nhập kho
+      await batchService.appendEvent(scannedBatch.id, {
+        eventType: 'RECEIVE',
+        metadata: {
+          action: 'Nhập kho siêu thị',
+          condition: 'Đạt chuẩn'
+        }
+      });
+
       setIsModalOpen(false);
       setStatus('success');
-    }, 2000);
+    } catch (e) {
+      console.error(e);
+      alert('Có lỗi xảy ra khi cập nhật lô hàng!');
+      setIsModalOpen(false);
+      setStatus('idle');
+    }
   };
 
   if (status === 'success') {
@@ -44,7 +92,7 @@ export default function ReceiveGoods() {
           </svg>
         </div>
         <h2>Nhập Kho Thành công!</h2>
-        <p>Lô hàng <strong>#BATCH-88902</strong> đã được chuyển giao cho Siêu thị lưu trữ trên Blockchain.</p>
+        <p>Lô hàng <strong>#{scannedBatch?.batchCode}</strong> đã được chuyển giao cho Siêu thị lưu trữ trên Blockchain.</p>
         <button className="btn-primary mt-3" onClick={() => { setStatus('idle'); setScannedBatch(null); }}>Tiếp tục Nhập hàng</button>
       </div>
     );
@@ -53,40 +101,31 @@ export default function ReceiveGoods() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">Nhập hàng vào Kho</h1>
+        <h1 className="page-title">Nhập hàng vào Kho (Nhà Bán Lẻ)</h1>
         <p className="page-subtitle">Quét mã QR từ Đơn vị Vận chuyển để xác nhận nhận hàng</p>
       </div>
 
       <div className="transfer-grid">
         <div className="scanner-card">
           <h3>Máy Quét Mã QR</h3>
-          <div className={`scanner-viewport ${isScanning ? 'scanning' : ''}`}>
-            {isScanning ? (
-              <div className="scan-line"></div>
-            ) : (
-              <div className="scan-prompt">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                  <rect x="7" y="7" width="3" height="3"></rect>
-                  <rect x="14" y="7" width="3" height="3"></rect>
-                  <rect x="7" y="14" width="3" height="3"></rect>
-                  <rect x="14" y="14" width="3" height="3"></rect>
-                </svg>
-                <p>Căn chỉnh mã QR vào khung hình</p>
-              </div>
-            )}
-            <div className="corner corner-tl"></div>
-            <div className="corner corner-tr"></div>
-            <div className="corner corner-bl"></div>
-            <div className="corner corner-br"></div>
-          </div>
-          <button 
-            className="btn-primary w-100 mt-3" 
-            onClick={startScan}
-            disabled={isScanning}
-          >
-            {isScanning ? 'Đang quét...' : 'Kích hoạt Camera'}
-          </button>
+          
+          {!scannedBatch && !isLoading && (
+             <div id="reader-receive" style={{ width: '100%', border: 'none' }}></div>
+          )}
+
+          {isLoading && (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>
+              <span className="spinner" style={{ display: 'inline-block', width: '24px', height: '24px', border: '3px solid #ccc', borderTopColor: '#27ae60', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
+              <p>Đang tải dữ liệu lô hàng...</p>
+            </div>
+          )}
+
+          {scannedBatch && (
+            <div style={{ padding: '2rem', textAlign: 'center', background: '#e8f8f5', borderRadius: '8px', color: '#27ae60' }}>
+              <p><strong>Quét thành công!</strong></p>
+              <button className="btn-secondary mt-2" onClick={() => setScannedBatch(null)}>Quét lại</button>
+            </div>
+          )}
         </div>
 
         <div className="result-card">
@@ -95,19 +134,19 @@ export default function ReceiveGoods() {
             <div className="batch-info-result">
               <div className="info-row">
                 <span className="info-label">Mã Lô Hàng:</span>
-                <span className="info-value font-semibold text-primary">{scannedBatch.id}</span>
+                <span className="info-value font-semibold text-primary">{scannedBatch.batchCode}</span>
               </div>
               <div className="info-row">
                 <span className="info-label">Sản phẩm:</span>
-                <span className="info-value">{scannedBatch.product}</span>
+                <span className="info-value">{scannedBatch.product?.name}</span>
               </div>
               <div className="info-row">
-                <span className="info-label">Đơn vị vận chuyển:</span>
-                <span className="info-value">{scannedBatch.transporter}</span>
+                <span className="info-label">Bên giao (Chủ sở hữu cũ):</span>
+                <span className="info-value">{scannedBatch.currentOwnerOrg?.name}</span>
               </div>
               <div className="info-row">
-                <span className="info-label">Tình trạng bảo quản:</span>
-                <span className="info-value" style={{color: 'var(--success)', fontWeight: '600'}}>{scannedBatch.tempCondition}</span>
+                <span className="info-label">Khối lượng:</span>
+                <span className="info-value">{scannedBatch.currentQuantity} {scannedBatch.unit?.code}</span>
               </div>
 
               <div className="action-area mt-4">
@@ -131,7 +170,7 @@ export default function ReceiveGoods() {
       <MetaMaskModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
-        onSign={handleSign}
+        onSignSuccess={handleSign}
       />
     </div>
   );

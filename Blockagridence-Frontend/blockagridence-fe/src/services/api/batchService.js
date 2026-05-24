@@ -54,6 +54,15 @@ const batchService = {
   },
 
   /**
+   * Lấy danh sách sự kiện truy xuất
+   * GET /api/v1/batches/{batchId}/events
+   */
+  getBatchEvents: async (batchId) => {
+    const response = await axiosInstance.get(`/api/v1/batches/${batchId}/events`);
+    return response.data.body;
+  },
+
+  /**
    * Cập nhật trạng thái lô hàng
    * PATCH /api/v1/batches/{batchId}/status?status=...
    */

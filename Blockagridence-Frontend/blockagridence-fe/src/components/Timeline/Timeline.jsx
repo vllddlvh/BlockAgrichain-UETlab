@@ -1,49 +1,56 @@
 import { useState } from 'react';
 import './Timeline.css';
 
-export default function Timeline() {
+export default function Timeline({ events = [], batch }) {
   const [activeStep, setActiveStep] = useState(0);
 
-  const timelineData = [
-    {
-      role: 'Nông dân (Farmer)',
-      title: 'Khởi tạo Lô hàng',
-      date: '10:00 AM - 12/05/2026',
-      location: 'Nông trại Đà Lạt, Lâm Đồng',
-      details: [
-        { label: 'Giống', value: 'Dâu tây New Zealand' },
-        { label: 'Phân bón', value: 'Hữu cơ sinh học' },
-        { label: 'Chứng nhận', value: 'VietGAP (Mã: VG-2026)' }
-      ],
-      hash: '0x8f3c...a1b2',
-      status: 'verified'
-    },
-    {
-      role: 'Đơn vị Vận chuyển',
-      title: 'Nhật ký Hành trình',
-      date: '14:30 PM - 12/05/2026',
-      location: 'Kho trung chuyển, Đồng Nai',
-      details: [
-        { label: 'Nhiệt độ', value: '4°C' },
-        { label: 'Độ ẩm', value: '85%' },
-        { label: 'Trạng thái', value: 'Đang vận chuyển an toàn' }
-      ],
-      hash: '0x2a9b...f4c1',
-      status: 'verified'
-    },
-    {
-      role: 'Nhà bán lẻ',
-      title: 'Lên kệ Phân phối',
-      date: '08:00 AM - 13/05/2026',
-      location: 'Siêu thị CoopMart, TP.HCM',
-      details: [
-        { label: 'Đóng gói', value: 'Hộp 500g' },
-        { label: 'Trạng thái', value: 'Sẵn sàng phục vụ' }
-      ],
-      hash: '0x7e1d...98b3',
-      status: 'pending'
+  if (!events || events.length === 0) {
+    return <div style={{ padding: '20px', textAlign: 'center', color: '#7f8c8d', background: '#f8f9fa', borderRadius: '8px' }}>Chưa có nhật ký/sự kiện nào được ghi nhận cho lô hàng này.</div>;
+  }
+
+  // Format events to timelineData
+  const timelineData = events.map(event => {
+    let details = [];
+    if (event.metadata) {
+       try {
+         const metaObj = typeof event.metadata === 'string' ? JSON.parse(event.metadata) : event.metadata;
+         details = Object.entries(metaObj).map(([key, value]) => ({ 
+           // Convert key to display friendly (optional, for now just capitalize)
+           label: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '), 
+           value: String(value) 
+         }));
+       } catch(e) {
+         console.warn("Could not parse metadata");
+       }
     }
-  ];
+    
+    // Xử lý tọa độ
+    let locationStr = 'Chưa xác định tọa độ GPS';
+    if (event.gpsLatitude && event.gpsLongitude) {
+        locationStr = `${event.gpsLatitude}, ${event.gpsLongitude}`;
+    }
+
+    // Mapping Event Type ra tiếng Việt
+    const eventTypeMap = {
+      'PLANTING': 'Khởi tạo / Xuống giống',
+      'HARVEST': 'Thu hoạch',
+      'PACKAGE': 'Đóng gói',
+      'TRANSPORT': 'Vận chuyển',
+      'RECEIVE': 'Nhập kho',
+      'SELL': 'Lên kệ xuất bán'
+    };
+
+    return {
+      role: event.createdByOrg?.name || 'Hệ thống',
+      title: eventTypeMap[event.eventType] || event.eventType,
+      date: new Date(event.createdAt).toLocaleString('vi-VN'),
+      location: locationStr,
+      details: details,
+      hash: event.onchainHash || 'Đang chờ block...',
+      status: event.onchainHash ? 'verified' : 'pending',
+      imageCids: event.imageCids || []
+    };
+  });
 
   return (
     <div className="timeline-container">
@@ -72,18 +79,34 @@ export default function Timeline() {
               <span>{item.location}</span>
             </div>
             
-            <div className="details-grid">
-              {item.details.map((detail, idx) => (
-                <div className="detail-item" key={idx}>
-                  <span className="detail-label">{detail.label}:</span>
-                  <span className="detail-value">{detail.value}</span>
-                </div>
-              ))}
-            </div>
+            {item.details && item.details.length > 0 && (
+              <div className="details-grid">
+                {item.details.map((detail, idx) => (
+                  <div className="detail-item" key={idx}>
+                    <span className="detail-label">{detail.label}:</span>
+                    <span className="detail-value">{detail.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Hiển thị hình ảnh nếu có */}
+            {item.imageCids && item.imageCids.length > 0 && (
+              <div className="event-images" style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                {item.imageCids.map((cid, idx) => (
+                  <img 
+                    key={idx}
+                    src={`https://ipfs.io/ipfs/${cid}`} 
+                    alt="Event" 
+                    style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #ddd' }}
+                  />
+                ))}
+              </div>
+            )}
 
-            <div className="tx-hash">
+            <div className="tx-hash" style={{ marginTop: '15px' }}>
               <span>Tx Hash:</span>
-              <code>{item.hash}</code>
+              <code style={{ fontSize: '0.8rem', wordBreak: 'break-all' }}>{item.hash}</code>
             </div>
           </div>
         </div>
