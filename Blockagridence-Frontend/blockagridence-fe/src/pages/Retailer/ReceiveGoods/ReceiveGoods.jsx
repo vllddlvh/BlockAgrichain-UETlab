@@ -60,8 +60,8 @@ export default function ReceiveGoods() {
   const handleSign = async () => {
     setStatus('signing');
     try {
-      // Cập nhật trạng thái thành Nhập kho / Sẵn sàng lên kệ
-      await batchService.updateBatchStatus(scannedBatch.id, 'ON_SHELF');
+      // Cập nhật trạng thái thành Nhập kho / Đã giao hàng
+      await batchService.updateBatchStatus(scannedBatch.id, 'DELIVERED');
       
       // Ghi nhận sự kiện nhập kho
       await batchService.appendEvent(scannedBatch.id, {
@@ -171,6 +171,8 @@ export default function ReceiveGoods() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
         onSignSuccess={handleSign}
+        batchId={scannedBatch?.batchCode}
+        onchainHash={scannedBatch?.onchainHash || '0x' + '1'.repeat(64)}
       />
     </div>
   );

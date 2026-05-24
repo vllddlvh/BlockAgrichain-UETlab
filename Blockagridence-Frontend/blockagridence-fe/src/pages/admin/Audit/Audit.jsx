@@ -1,21 +1,68 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import MetaMaskModal from '../../../components/MetaMaskModal/MetaMaskModal';
+import organizationService from '../../../services/api/organizationService';
 import './Audit.css';
 
 export default function Audit() {
+  const queryClient = useQueryClient();
+  const [selectedDoc, setSelectedDoc] = useState(null); // { org, doc }
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [status, setStatus] = useState('idle');
 
+  const { data: orgs = [], isLoading } = useQuery({
+    queryKey: ['adminOrgs'],
+    queryFn: organizationService.getAllOrganizations
+  });
+
+  // Gộp tất cả documents của tất cả organizations
+  const allDocuments = useMemo(() => {
+    let docs = [];
+    orgs.forEach(org => {
+      if (org.documents && org.documents.length > 0) {
+        org.documents.forEach(doc => {
+          docs.push({ org, doc });
+        });
+      }
+    });
+    return docs;
+  }, [orgs]);
+
+  // Lọc ra các document thuộc tổ chức đang PENDING để làm danh sách cần duyệt
+  const pendingDocs = allDocuments.filter(item => item.org.status === 'PENDING');
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, newStatus }) => {
+      return await organizationService.updateOrgStatus(id, newStatus);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminOrgs'] });
+      setIsModalOpen(false);
+      setStatus('success');
+    },
+    onError: (err) => {
+      console.error(err);
+      alert('Có lỗi xảy ra: ' + err.message);
+      setIsModalOpen(false);
+      setStatus('idle');
+    }
+  });
+
   const handleApprove = () => {
+    if (!selectedDoc) return;
     setIsModalOpen(true);
   };
 
   const handleSign = () => {
     setStatus('signing');
-    setTimeout(() => {
-      setIsModalOpen(false);
-      setStatus('success');
-    }, 2000);
+    // Duyệt tổ chức này thành VERIFIED
+    updateMutation.mutate({ id: selectedDoc.org.id, newStatus: 'VERIFIED' });
+  };
+
+  const getIpfsUrl = (cid) => {
+    return import.meta.env.VITE_PINATA_GATEWAY 
+      ? `${import.meta.env.VITE_PINATA_GATEWAY}/ipfs/${cid}`
+      : `https://gateway.pinata.cloud/ipfs/${cid}`;
   };
 
   if (status === 'success') {
@@ -28,8 +75,8 @@ export default function Audit() {
           </svg>
         </div>
         <h2>Thanh tra Chứng nhận Thành công!</h2>
-        <p>Hồ sơ VietGAP của cơ sở đã được phê duyệt và lưu vĩnh viễn trạng thái hợp lệ trên Blockchain.</p>
-        <button className="btn-primary mt-3" onClick={() => setStatus('idle')}>Tiếp tục Thanh tra</button>
+        <p>Hồ sơ của <strong>{selectedDoc?.org?.name}</strong> đã được phê duyệt và lưu vĩnh viễn trạng thái hợp lệ trên Blockchain.</p>
+        <button className="btn-primary mt-3" onClick={() => { setStatus('idle'); setSelectedDoc(null); }}>Tiếp tục Thanh tra</button>
       </div>
     );
   }
@@ -38,81 +85,99 @@ export default function Audit() {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Thanh tra Định kỳ (Audit)</h1>
-        <p className="page-subtitle">Đối chiếu chứng nhận ATVSTP/VietGAP thực tế với hồ sơ lưu trữ Blockchain</p>
+        <p className="page-subtitle">Đối chiếu chứng nhận ATVSTP/VietGAP thực tế với hồ sơ lưu trữ IPFS/Blockchain</p>
       </div>
 
       <div className="audit-grid">
         <div className="audit-list-section">
-          <h3>Hồ sơ chờ duyệt (3)</h3>
+          <h3>Hồ sơ chờ duyệt ({pendingDocs.length})</h3>
           
-          <div className="audit-card active">
-            <div className="audit-meta">
-              <span className="badge pending">Chờ thanh tra</span>
-              <span className="date">14/05/2026</span>
+          {isLoading ? (
+             <div className="loading-state"><span className="spinner"></span> Đang tải...</div>
+          ) : pendingDocs.length === 0 ? (
+             <div className="empty-state" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Không có hồ sơ nào đang chờ duyệt.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
+              {pendingDocs.map((item) => (
+                <div 
+                  key={item.doc.id}
+                  className={`audit-card ${selectedDoc?.doc.id === item.doc.id ? 'active' : ''}`}
+                  onClick={() => setSelectedDoc(item)}
+                  style={{ cursor: 'pointer', border: selectedDoc?.doc.id === item.doc.id ? '2px solid #3b82f6' : '1px solid #e2e8f0' }}
+                >
+                  <div className="audit-meta">
+                    <span className="badge pending">Chờ thanh tra</span>
+                    <span className="date">{new Date(item.org.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <h4>{item.doc.documentName || item.doc.documentType}</h4>
+                  <p className="entity-name">{item.org.name}</p>
+                </div>
+              ))}
             </div>
-            <h4>Chứng nhận VietGAP 2026</h4>
-            <p className="entity-name">HTX Nông nghiệp Đà Lạt</p>
-          </div>
-          
-          <div className="audit-card">
-            <div className="audit-meta">
-              <span className="badge pending">Chờ thanh tra</span>
-              <span className="date">12/05/2026</span>
-            </div>
-            <h4>Chứng nhận ATVSTP</h4>
-            <p className="entity-name">Kho bãi Miền Nam</p>
-          </div>
+          )}
         </div>
 
         <div className="audit-detail-section">
-          <div className="detail-header">
-            <h3>Chi tiết Hồ sơ: Chứng nhận VietGAP 2026</h3>
-          </div>
-          
-          <div className="document-preview">
-            <div className="mock-doc">
-              <div className="doc-seal">GIẤY CHỨNG NHẬN VietGAP</div>
-              <p>Cấp cho: HTX Nông nghiệp Đà Lạt</p>
-              <p>Mã số: VG-2026-889</p>
-              <p>Ngày cấp: 10/05/2026</p>
-              <p>Cơ quan cấp: Cục Trồng trọt</p>
-              <div className="doc-signature">Đã ký dấu đỏ</div>
-            </div>
-          </div>
-
-          <div className="verification-box mt-4">
-            <h4>Đối soát Dữ liệu Blockchain</h4>
-            <div className="hash-check">
-              <div className="hash-item">
-                <span className="label">Bản gốc (Tải lên bởi HTX):</span>
-                <code className="text-muted">8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92</code>
+          {selectedDoc ? (
+            <>
+              <div className="detail-header">
+                <h3>Chi tiết Hồ sơ: {selectedDoc.doc.documentName || selectedDoc.doc.documentType}</h3>
               </div>
-              <div className="hash-item">
-                <span className="label">Bản lưu On-chain:</span>
-                <code className="text-primary">8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92</code>
+              
+              <div className="document-preview" style={{ padding: '0', background: '#f8fafc', borderRadius: '8px', overflow: 'hidden' }}>
+                {selectedDoc.doc.cid ? (
+                   <img src={getIpfsUrl(selectedDoc.doc.cid)} alt="Document" style={{ width: '100%', maxHeight: '400px', objectFit: 'contain' }} />
+                ) : (
+                  <div className="mock-doc">
+                    <div className="doc-seal">CHƯA CÓ BẢN QUÉT IPFS</div>
+                    <p>Cấp cho: {selectedDoc.org.name}</p>
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="match-status mt-2">
-              <span className="badge success">✓ Trùng khớp Mã Hash</span>
-              <span className="text-sm text-muted ml-2">Tài liệu chưa bị chỉnh sửa từ lúc tải lên.</span>
-            </div>
-          </div>
 
-          <div className="audit-actions mt-4">
-            <button className="btn-secondary w-50">
-              Từ chối (Tài liệu giả mạo)
-            </button>
-            <button className="btn-primary w-50" onClick={handleApprove}>
-              Duyệt & Ký On-chain
-            </button>
-          </div>
+              <div className="verification-box mt-4">
+                <h4>Đối soát Dữ liệu Blockchain (IPFS)</h4>
+                <div className="hash-check">
+                  <div className="hash-item">
+                    <span className="label">IPFS CID (Lưu trữ On-chain):</span>
+                    <code className="text-primary">{selectedDoc.doc.cid || 'N/A'}</code>
+                  </div>
+                  <div className="hash-item mt-2">
+                    <span className="label">Loại tài liệu:</span>
+                    <code className="text-muted">{selectedDoc.doc.documentType}</code>
+                  </div>
+                </div>
+                {selectedDoc.doc.cid && (
+                  <div className="match-status mt-2">
+                    <span className="badge success">✓ Đã xác thực toàn vẹn (IPFS)</span>
+                    <span className="text-sm text-muted ml-2">Tài liệu không bị chỉnh sửa từ lúc tải lên.</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="audit-actions mt-4">
+                <button className="btn-secondary w-50" onClick={() => alert('Chức năng từ chối đang được cập nhật!')}>
+                  Từ chối (Tài liệu không hợp lệ)
+                </button>
+                <button className="btn-primary w-50" onClick={handleApprove}>
+                  Duyệt Tổ chức & Ký On-chain
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="empty-state" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+              <p>Chọn một hồ sơ bên trái để xem chi tiết thanh tra.</p>
+            </div>
+          )}
         </div>
       </div>
 
       <MetaMaskModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
-        onSign={handleSign}
+        onSignSuccess={handleSign}
+        batchId={`AUDIT-${selectedDoc?.org?.taxCode || 'DOC'}`}
+        onchainHash={selectedDoc?.doc?.cid || '0x000'}
       />
     </div>
   );
