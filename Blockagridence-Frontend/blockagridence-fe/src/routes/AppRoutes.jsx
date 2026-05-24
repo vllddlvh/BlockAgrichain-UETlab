@@ -25,7 +25,6 @@ import Batches from '../pages/Farmer/BatchDetail/Batches';
 
 // Transporter pages
 import TransferOwnership from '../pages/Transporter/TransferOwnership/TransferOwnership';
-import UpdateTransit from '../pages/Transporter/UpdateTransit/UpdateTransit';
 
 // Retailer pages
 import ReceiveGoods from '../pages/Retailer/ReceiveGoods/ReceiveGoods';
@@ -136,16 +135,7 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/update-transit"
-        element={
-          <ProtectedRoute requiredRoles={TRANSPORT_ROLES}>
-            <DashboardLayout><UpdateTransit /></DashboardLayout>
-          </ProtectedRoute>
-        }
-      />
-
-      {/* ===== PROTECTED: RETAILER ===== */}
+    {/* ===== PROTECTED: RETAILER ===== */}
       <Route
         path="/receive-goods"
         element={

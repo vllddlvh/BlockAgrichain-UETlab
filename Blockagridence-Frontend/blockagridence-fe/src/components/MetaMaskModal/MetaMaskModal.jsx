@@ -12,7 +12,7 @@ const CONTRACT_ABI = [
   "function storeHash(string calldata batchId, string calldata dataHash) external"
 ];
 
-export default function MetaMaskModal({ isOpen, onClose, onSignSuccess, batchId, onchainHash }) {
+export default function MetaMaskModal({ isOpen, onClose, onSignSuccess, onSignError, batchId, onchainHash }) {
   const [isSigning, setIsSigning] = useState(false);
   const [error, setError] = useState('');
 
@@ -91,13 +91,33 @@ export default function MetaMaskModal({ isOpen, onClose, onSignSuccess, batchId,
       onSignSuccess(receipt.hash); // Return transaction hash to the caller
       
     } catch (err) {
-      console.error(err);
+      console.error("MetaMask Error Object:", err);
       setIsSigning(false);
+      
+      let errorMsg = 'Giao dịch bị từ chối hoặc có lỗi xảy ra.';
       if (err.code === 4001) {
-        setError('Bạn đã từ chối giao dịch trong MetaMask.');
-      } else {
-        setError(err.reason || err.message || 'Giao dịch bị từ chối hoặc có lỗi xảy ra.');
+        errorMsg = 'Bạn đã từ chối giao dịch trong MetaMask.';
+      } else if (err.error && err.error.message) {
+        errorMsg = err.error.message;
+      } else if (err.info && err.info.error && err.info.error.message) {
+        errorMsg = err.info.error.message;
+      } else if (err.message) {
+        errorMsg = err.message;
       }
+
+      // Hướng dẫn fix lỗi lệch nonce của mạng cục bộ Hardhat
+      if (typeof errorMsg === 'string' && (errorMsg.includes('too many errors') || errorMsg.includes('nonce') || errorMsg.includes('could not coalesce error'))) {
+        errorMsg = (
+          <span>
+            <b>Lỗi đồng bộ mạng cục bộ:</b> {errorMsg.substring(0, 100)}...
+            <br/><br/>
+            <i>Cách sửa: Mở MetaMask &gt; Cài đặt &gt; Nâng cao &gt; <b>Xóa dữ liệu hoạt động</b> (Clear activity tab data) để reset nonce, sau đó tải lại trang và thử lại.</i>
+          </span>
+        );
+      }
+
+      setError(errorMsg);
+      if (onSignError) onSignError(err);
     }
   };
 

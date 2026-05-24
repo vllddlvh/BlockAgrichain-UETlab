@@ -13,6 +13,7 @@ export default function Batches() {
   const [hashToSign, setHashToSign] = useState(null);
   const [signingBatchId, setSigningBatchId] = useState(null);
   const [signingBatchDbId, setSigningBatchDbId] = useState(null);
+  const [previousStatus, setPreviousStatus] = useState(null);
 
   // Fetch danh sách lô hàng
   const { data: batches = [], isLoading } = useQuery({
@@ -68,7 +69,34 @@ export default function Batches() {
   };
 
   const handleUpdateStatus = (batch, newStatus) => {
+    setPreviousStatus(batch.status);
     updateStatusMutation.mutate({ id: batch.id, status: newStatus });
+  };
+
+  const rollbackStatus = async () => {
+    if (previousStatus && signingBatchDbId) {
+      try {
+        await batchService.updateBatchStatus(signingBatchDbId, previousStatus);
+        queryClient.invalidateQueries({ queryKey: ['batches'] });
+      } catch (e) {
+        console.error('Lỗi khi rollback trạng thái lô hàng:', e);
+      }
+    }
+    setHashToSign(null);
+    setSigningBatchId(null);
+    setSigningBatchDbId(null);
+    setPreviousStatus(null);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    if (hashToSign) {
+      rollbackStatus();
+    }
+  };
+
+  const handleSignError = (err) => {
+    rollbackStatus();
   };
 
   const handleSignSuccess = async (txHash) => {
@@ -226,8 +254,9 @@ export default function Batches() {
 
       <MetaMaskModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleModalClose}
         onSignSuccess={handleSignSuccess}
+        onSignError={handleSignError}
         batchId={signingBatchId}
         onchainHash={hashToSign}
       />
