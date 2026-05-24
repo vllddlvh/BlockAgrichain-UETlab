@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 
 // Layouts
@@ -39,6 +39,37 @@ const FARM_ROLES        = ['FARM_ADMIN', 'FARM_STAFF'];
 const TRANSPORT_ROLES   = ['TRANSPORT_ADMIN', 'TRANSPORT_STAFF'];
 const RETAIL_ROLES      = ['RETAIL_ADMIN', 'RETAIL_STAFF'];
 const ADMIN_ROLES       = ['SYSTEM_ADMIN'];
+
+const UnauthorizedPage = () => {
+  const { logout, getProfileConfig } = useAuthStore();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
+  const handleGoHome = () => {
+    navigate(getProfileConfig().defaultPath, { replace: true });
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '1rem', background: '#f8fafc' }}>
+      <div style={{ background: 'white', padding: '3rem', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+        <h1 style={{ color: '#ef4444', marginBottom: '1rem' }}>🚫 Không có quyền truy cập</h1>
+        <p style={{ color: '#64748b' }}>Tài khoản của bạn không đủ quyền hạn để xem trang này.</p>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '2rem', justifyContent: 'center' }}>
+          <button onClick={handleGoHome} style={{ padding: '10px 24px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 500 }}>
+            Về Trang Chủ
+          </button>
+          <button onClick={handleLogout} style={{ padding: '10px 24px', background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '6px', cursor: 'pointer', fontWeight: 500 }}>
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function AppRoutes() {
   const { isAuthenticated, getProfileConfig } = useAuthStore();
@@ -174,12 +205,7 @@ export default function AppRoutes() {
       {/* ===== FALLBACKS ===== */}
       <Route
         path="/unauthorized"
-        element={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '1rem' }}>
-            <h1>🚫 Không có quyền truy cập</h1>
-            <p>Tài khoản của bạn không đủ quyền hạn để xem trang này.</p>
-          </div>
-        }
+        element={<UnauthorizedPage />}
       />
       <Route
         path="/"
