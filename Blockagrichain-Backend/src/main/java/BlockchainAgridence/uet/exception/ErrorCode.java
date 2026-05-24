@@ -85,6 +85,12 @@ public enum ErrorCode {
     BATCH_NOT_FOUND(2102, "Không tìm thấy Lô hàng", HttpStatus.NOT_FOUND),
     BATCH_INACTIVE(2103, "Lô hàng đã ngừng hoạt động, không thể thao tác", HttpStatus.BAD_REQUEST),
     BATCH_INSUFFICIENT_QUANTITY(2104, "Không đủ khối lượng trong kho để thực hiện", HttpStatus.BAD_REQUEST),
+    BLOCKCHAIN_NOT_CONFIGURED(2105, "Chưa cấu hình RPC hoặc địa chỉ smart contract", HttpStatus.BAD_REQUEST),
+    BLOCKCHAIN_HASH_MISMATCH(2106, "Hash FE gửi lên không khớp với dữ liệu backend tính lại", HttpStatus.BAD_REQUEST),
+    BLOCKCHAIN_VERIFY_FAILED(2107, "Không xác minh được hash trên blockchain", HttpStatus.BAD_REQUEST),
+    INVALID_STATUS_TRANSITION(2108, "Chuyển trạng thái lô hàng không hợp lệ", HttpStatus.BAD_REQUEST),
+    ROLE_NOT_AUTHORIZED_FOR_STATUS(2109, "Vai trò của bạn không được phép thiết lập trạng thái này", HttpStatus.FORBIDDEN),
+    BATCH_NOT_MODIFIABLE(2110, "Lô hàng đã giao hoặc hết hạn, không thể thêm sự kiện mới", HttpStatus.BAD_REQUEST),
 
     // --- Lỗi liên quan đến IPFS ---
     FILE_EMPTY(3001, "File tải lên không được để trống", HttpStatus.BAD_REQUEST),

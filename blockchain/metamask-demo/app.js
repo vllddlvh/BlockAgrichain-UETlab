@@ -1,27 +1,16 @@
-// First deploy on Hardhat local node always lands at this address (nonce 0, signer 0).
-// Steps:
-//   Terminal 1: npx hardhat node
-//   Terminal 2: npx hardhat run scripts/deploy.js --network localhost
+// Update this address after each fresh Hardhat deployment.
+// Terminal 1: npx hardhat node
+// Terminal 2: npx hardhat run scripts/deploy.js --network localhost
 const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const CHAIN_ID = 31337;
+const CHAIN_ID_HEX = `0x${CHAIN_ID.toString(16)}`;
 
 const ABI = [
-  {
-    inputs: [{ internalType: "string", name: "hash", type: "string" }],
-    name: "storeHash",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "index", type: "uint256" }],
-    name: "getHash",
-    outputs: [{ internalType: "string", name: "", type: "string" }],
-    stateMutability: "view",
-    type: "function",
-  },
+  "function storeHash(string calldata batchId, string calldata dataHash) external",
+  "function getHash(string calldata batchId) external view returns (string memory)",
+  "function verifyHash(string calldata batchId, string calldata dataHash) external view returns (bool)",
 ];
 
-// SHA-256 using Web Crypto API — browser built-in, no library needed
 async function sha256hex(message) {
   const encoded = new TextEncoder().encode(message);
   const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
@@ -30,23 +19,51 @@ async function sha256hex(message) {
     .join("");
 }
 
-// DOM refs
-const btnConnect  = document.getElementById("btn-connect");
-const btnStore    = document.getElementById("btn-store");
-const inputData   = document.getElementById("input-data");
-const elAddress   = document.getElementById("wallet-address");
-const elHash      = document.getElementById("generated-hash");
-const elTxHash    = document.getElementById("tx-hash");
-const elStatus    = document.getElementById("status");
+const btnConnect = document.getElementById("btn-connect");
+const btnStore = document.getElementById("btn-store");
+const inputBatchId = document.getElementById("input-batch-id");
+const inputData = document.getElementById("input-data");
+const elAddress = document.getElementById("wallet-address");
+const elHash = document.getElementById("generated-hash");
+const elTxHash = document.getElementById("tx-hash");
+const elStatus = document.getElementById("status");
 
 let signer = null;
 
-function setStatus(msg, type = "info") {
-  elStatus.textContent = msg;
-  elStatus.className = type; // "info" | "success" | "error"
+function setStatus(message, type = "info") {
+  elStatus.textContent = message;
+  elStatus.className = type;
 }
 
-// ─── Step 1: Connect MetaMask ───────────────────────────────────────────────
+async function ensureCorrectNetwork() {
+  const currentChainId = await window.ethereum.request({ method: "eth_chainId" });
+  if (currentChainId === CHAIN_ID_HEX) {
+    return;
+  }
+
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: CHAIN_ID_HEX }],
+    });
+  } catch (switchErr) {
+    if (switchErr.code !== 4902) {
+      throw switchErr;
+    }
+
+    await window.ethereum.request({
+      method: "wallet_addEthereumChain",
+      params: [
+        {
+          chainId: CHAIN_ID_HEX,
+          chainName: "Hardhat Local",
+          rpcUrls: ["http://127.0.0.1:8545"],
+          nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+        },
+      ],
+    });
+  }
+}
 
 btnConnect.addEventListener("click", async () => {
   if (!window.ethereum) {
@@ -55,46 +72,10 @@ btnConnect.addEventListener("click", async () => {
   }
 
   try {
-    setStatus("Requesting accounts...", "info");
+    setStatus("Requesting wallet access...", "info");
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    await ensureCorrectNetwork();
 
-    // Request wallet access
-    const accounts = await window.ethereum.request({
-      method: "eth_requestAccounts",
-    });
-
-    // Verify chain ID
-    const chainIdHex = await window.ethereum.request({ method: "eth_chainId" });
-    const chainId = parseInt(chainIdHex, 16);
-
-    if (chainId !== 31337) {
-      setStatus("Switching to Hardhat Local network...", "info");
-      try {
-        // Try switching if the network was already added before
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x7A69" }],
-        });
-      } catch (switchErr) {
-        if (switchErr.code === 4902) {
-          // Network not in MetaMask yet — add it
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId: "0x7A69",
-                chainName: "Hardhat Local",
-                rpcUrls: ["http://127.0.0.1:8545"],
-                nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-              },
-            ],
-          });
-        } else {
-          throw switchErr;
-        }
-      }
-    }
-
-    // Create ethers signer from MetaMask provider
     const provider = new ethers.BrowserProvider(window.ethereum);
     signer = await provider.getSigner();
 
@@ -103,57 +84,43 @@ btnConnect.addEventListener("click", async () => {
     btnConnect.textContent = "Connected";
     btnConnect.classList.add("connected");
     btnConnect.disabled = true;
-    setStatus("Wallet connected. Enter data and click Hash & Store.", "success");
-
+    setStatus("Wallet connected. Enter batch data and store the hash.", "success");
   } catch (err) {
-    if (err.code === 4001) {
-      setStatus("Connection rejected by user.", "error");
-    } else {
-      setStatus(`Connection error: ${err.message}`, "error");
-    }
+    setStatus(err.code === 4001 ? "Connection rejected by user." : `Connection error: ${err.message}`, "error");
   }
 });
 
-// ─── Step 2: Hash & Store ───────────────────────────────────────────────────
-
 btnStore.addEventListener("click", async () => {
+  const batchId = inputBatchId.value.trim();
   const data = inputData.value.trim();
-  if (!data) {
-    setStatus("Please enter some data first.", "error");
+
+  if (!batchId || !data) {
+    setStatus("Enter both batch ID and data first.", "error");
     return;
   }
 
   btnStore.disabled = true;
-  elHash.textContent = "—";
-  elTxHash.textContent = "—";
+  elHash.textContent = "-";
+  elTxHash.textContent = "-";
 
   try {
-    // 1. Generate SHA-256 hash in browser
     setStatus("Generating SHA-256 hash...", "info");
-    const hash = await sha256hex(data);
-    elHash.textContent = hash;
+    const dataHash = await sha256hex(data);
+    elHash.textContent = dataHash;
 
-    // 2. Build contract instance with MetaMask signer
     const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
-    // 3. Send transaction — MetaMask popup opens here
     setStatus("Waiting for MetaMask confirmation...", "info");
-    const tx = await contract.storeHash(hash);
+    const tx = await contract.storeHash(batchId, dataHash);
 
-    // 4. Wait for block confirmation
     setStatus(`Transaction sent (${tx.hash.slice(0, 12)}...). Waiting for block...`, "info");
     const receipt = await tx.wait();
 
-    // 5. Display result
+    const verified = await contract.verifyHash(batchId, dataHash);
     elTxHash.textContent = receipt.hash;
-    setStatus("Hash stored on blockchain successfully!", "success");
-
+    setStatus(verified ? "Hash stored and verified on blockchain." : "Transaction mined, but verification failed.", verified ? "success" : "error");
   } catch (err) {
-    if (err.code === 4001) {
-      setStatus("Transaction rejected by user.", "error");
-    } else {
-      setStatus(`Error: ${err.message}`, "error");
-    }
+    setStatus(err.code === 4001 ? "Transaction rejected by user." : `Error: ${err.message}`, "error");
   } finally {
     btnStore.disabled = false;
   }

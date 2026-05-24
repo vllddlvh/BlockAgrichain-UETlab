@@ -11,6 +11,7 @@ export default function Batches() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [hashToSign, setHashToSign] = useState(null);
   const [signingBatchId, setSigningBatchId] = useState(null);
+  const [signingBatchDbId, setSigningBatchDbId] = useState(null);
 
   // Fetch danh sách lô hàng
   const { data: batches = [], isLoading } = useQuery({
@@ -30,9 +31,23 @@ export default function Batches() {
       // Nếu trạng thái chuyển sang Sẵn sàng bán, backend sẽ gen ra onchainHash
       if ((updatedBatch.status === 'READY_FOR_SALE' || updatedBatch.status === 'DEPLETED') && updatedBatch.onchainHash) {
         setSigningBatchId(updatedBatch.batchCode);
+        setSigningBatchDbId(updatedBatch.id);
         setHashToSign(updatedBatch.onchainHash);
         setIsModalOpen(true);
       }
+    }
+  });
+
+  const confirmAnchorMutation = useMutation({
+    mutationFn: async ({ batchId, txHash, dataHash }) => {
+      return await batchService.confirmBlockchainAnchor(batchId, { txHash, dataHash });
+    },
+    onSuccess: (updatedBatch) => {
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
+      setSelectedBatch(updatedBatch);
+      setHashToSign(null);
+      setSigningBatchId(null);
+      setSigningBatchDbId(null);
     }
   });
 
@@ -55,9 +70,18 @@ export default function Batches() {
     updateStatusMutation.mutate({ id: batch.id, status: newStatus });
   };
 
-  const handleSignSuccess = (txHash) => {
+  const handleSignSuccess = async (txHash) => {
     setIsModalOpen(false);
-    alert(`Đã ký và lưu lên mạng Blockchain thành công!\nTx Hash: ${txHash}`);
+    try {
+      await confirmAnchorMutation.mutateAsync({
+        batchId: signingBatchDbId,
+        txHash,
+        dataHash: hashToSign
+      });
+      alert(`Đã ký, lưu lên blockchain và xác nhận backend thành công!\nTx Hash: ${txHash}`);
+    } catch (error) {
+      alert(`Blockchain transaction đã mined nhưng backend chưa xác nhận được proof.\nTx Hash: ${txHash}\nLỗi: ${error?.response?.data?.message || error.message}`);
+    }
   };
 
   return (

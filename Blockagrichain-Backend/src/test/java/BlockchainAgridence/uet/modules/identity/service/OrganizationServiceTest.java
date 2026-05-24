@@ -108,7 +108,7 @@ class OrganizationServiceTest {
         when(userRepository.existsByEmail(registrationRequest.getAdminEmail())).thenReturn(false);
         when(organizationMapper.toEntity(registrationRequest)).thenReturn(organizationEntity);
         when(organizationRepository.save(any(Organization.class))).thenReturn(organizationEntity);
-        when(roleRepository.findByCode("ORG_ADMIN")).thenReturn(Optional.of(adminRole));
+        when(roleRepository.findByCode("FARM_ADMIN")).thenReturn(Optional.of(adminRole));
         when(passwordEncoder.encode(registrationRequest.getAdminPassword())).thenReturn("encryptedPassword");
         when(organizationMapper.toResponse(organizationEntity)).thenReturn(expectedResponse);
 
@@ -146,7 +146,7 @@ class OrganizationServiceTest {
         when(organizationMapper.toEntity(registrationRequest)).thenReturn(organizationEntity);
         when(organizationMapper.toDocumentEntity(docReq)).thenReturn(docEntity);
         when(organizationRepository.save(any(Organization.class))).thenReturn(organizationEntity);
-        when(roleRepository.findByCode("ORG_ADMIN")).thenReturn(Optional.of(adminRole));
+        when(roleRepository.findByCode("FARM_ADMIN")).thenReturn(Optional.of(adminRole));
         when(passwordEncoder.encode(registrationRequest.getAdminPassword())).thenReturn("encryptedPassword");
         when(organizationMapper.toResponse(organizationEntity)).thenReturn(expectedResponse);
 
@@ -197,14 +197,14 @@ class OrganizationServiceTest {
         when(userRepository.existsByEmail(registrationRequest.getAdminEmail())).thenReturn(false);
         when(organizationMapper.toEntity(registrationRequest)).thenReturn(organizationEntity);
         when(organizationRepository.save(any(Organization.class))).thenReturn(organizationEntity);
-        when(roleRepository.findByCode("ORG_ADMIN")).thenReturn(Optional.empty());
+        when(roleRepository.findByCode("FARM_ADMIN")).thenReturn(Optional.empty());
 
         // Act & Assert
         AppException exception = assertThrows(AppException.class, () -> 
             organizationService.registerOrganization(registrationRequest)
         );
         assertEquals(ErrorCode.ROLE_NOT_FOUND, exception.getErrorCode());
-        verify(roleRepository).findByCode("ORG_ADMIN");
+        verify(roleRepository).findByCode("FARM_ADMIN");
         verify(userRepository, never()).save(any(User.class));
     }
 

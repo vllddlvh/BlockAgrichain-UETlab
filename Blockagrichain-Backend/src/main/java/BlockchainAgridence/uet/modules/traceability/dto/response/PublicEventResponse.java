@@ -23,5 +23,4 @@ public class PublicEventResponse {
     private List<String> imageCids;
     private Map<String, Object> metadata;
     private LocalDateTime createdAt;
-    private String onchainEventHash;
 }

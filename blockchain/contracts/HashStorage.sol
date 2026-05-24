@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 contract HashStorage {
 
-    // Emitted on every storeHash call — BE subscribes to index events
+    // Emitted on every storeHash call so off-chain services can index events.
     event HashStored(
         string  indexed batchId,
         string          dataHash,

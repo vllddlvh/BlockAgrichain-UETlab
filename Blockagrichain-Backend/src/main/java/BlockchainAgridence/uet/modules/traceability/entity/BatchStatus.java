@@ -4,6 +4,9 @@ public enum BatchStatus {
     CREATED,
     GROWING,
     READY_FOR_SALE,
+    IN_TRANSIT,
     DISTRIBUTED,
-    DEPLETED
+    DELIVERED,
+    DEPLETED,
+    EXPIRED
 }

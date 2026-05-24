@@ -3,6 +3,7 @@ package BlockchainAgridence.uet.modules.traceability.controller;
 
 import BlockchainAgridence.uet.modules.traceability.dto.request.BatchCreateRequest;
 import BlockchainAgridence.uet.modules.traceability.dto.request.BatchEventRequest;
+import BlockchainAgridence.uet.modules.traceability.dto.request.BlockchainAnchorConfirmRequest;
 import BlockchainAgridence.uet.modules.traceability.dto.response.BatchEventResponse;
 import BlockchainAgridence.uet.modules.traceability.dto.response.BatchResponse;
 import BlockchainAgridence.uet.modules.traceability.entity.BatchStatus;
@@ -24,9 +25,11 @@ public class BatchController {
     private final BatchService batchService;
 
 
-    // CÁC API NỘI BỘ TỔ CHỨC (CẦN XÁC THỰC & PHÂN QUYỀN RBAC)
+    // --- INTERNAL APIs (require auth + role) ---
+
+    // Only FARM_ADMIN creates new batches (farmers own the production origin)
     @PostMapping
-    @PreAuthorize("hasAuthority('BATCH_CREATE')") // Bảo mật: Chỉ user có quyền mới được tạo
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN')")
     public ApiResponse<BatchResponse> createBatch(
             @RequestBody @Valid BatchCreateRequest request) {
 
@@ -37,8 +40,9 @@ public class BatchController {
                 .build();
     }
 
+    // Any authenticated staff/admin of the owning org can append events
     @PostMapping("/{batchId}/events")
-    @PreAuthorize("hasAuthority('BATCH_UPDATE')") // Bảo mật: Chỉ nhân viên kho/cán bộ mới được bắn sự kiện
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN', 'STAFF')")
     public ApiResponse<BatchEventResponse> appendEvent(
             @PathVariable UUID batchId,
             @RequestBody @Valid BatchEventRequest request) {
@@ -50,8 +54,9 @@ public class BatchController {
                 .build();
     }
 
+    // Role-specific status transitions are enforced in BatchService
     @PatchMapping("/{batchId}/status")
-    @PreAuthorize("hasAuthority('BATCH_UPDATE')") // Bảo mật: Chỉ người có quyền mới được chuyển trạng thái
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN', 'STAFF')")
     public ApiResponse<BatchResponse> updateBatchStatus(
             @PathVariable UUID batchId,
             @RequestParam("status") BatchStatus newStatus) {
@@ -63,9 +68,22 @@ public class BatchController {
                 .build();
     }
 
+    // Blockchain confirmation — any admin of the owning org
+    @PostMapping("/{batchId}/blockchain-anchor")
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN')")
+    public ApiResponse<BatchResponse> confirmBlockchainAnchor(
+            @PathVariable UUID batchId,
+            @RequestBody @Valid BlockchainAnchorConfirmRequest request) {
+
+        return ApiResponse.<BatchResponse>builder()
+                .code(1000)
+                .message("Xác nhận giao dịch blockchain thành công")
+                .body(batchService.confirmBlockchainAnchor(batchId, request))
+                .build();
+    }
+
     @GetMapping
-    @PreAuthorize("hasAuthority('BATCH_VIEW_ALL') or hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN')") 
-    // Cho phép các role quản lý xem danh sách lô hàng của tổ chức
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN', 'STAFF')")
     public ApiResponse<List<BatchResponse>> getBatches() {
         return ApiResponse.<List<BatchResponse>>builder()
                 .code(1000)

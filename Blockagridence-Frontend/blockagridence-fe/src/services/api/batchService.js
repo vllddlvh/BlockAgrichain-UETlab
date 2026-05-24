@@ -62,6 +62,11 @@ const batchService = {
       params: { status }
     });
     return response.data.body;
+  },
+
+  confirmBlockchainAnchor: async (batchId, request) => {
+    const response = await axiosInstance.post(`/api/v1/batches/${batchId}/blockchain-anchor`, request);
+    return response.data.body;
   }
 };
 

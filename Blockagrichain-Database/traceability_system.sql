@@ -215,13 +215,16 @@ CREATE TABLE batches (
     product_type VARCHAR(50) NOT NULL,
     CONSTRAINT chk_product_type CHECK (product_type IN ('RAW_MATERIAL', 'PROCESSED_FOOD')),
     status VARCHAR(50) NOT NULL DEFAULT 'CREATED',
-    is_active BOOLEAN DEFAULT TRUE, 
-    onchain_hash VARCHAR(255), -- Chữ ký điện tử / TxHash khóa trên Blockchain
+    is_active BOOLEAN DEFAULT TRUE,
+    blockchain_tx_hash VARCHAR(255),
+    blockchain_data_hash VARCHAR(255),
+    blockchain_anchored_at TIMESTAMP,
 
     -- [CẬP NHẬT] Mass Balance
     initial_quantity NUMERIC(18, 3) NOT NULL DEFAULT 0,
     current_quantity NUMERIC(18, 3) NOT NULL DEFAULT 0,
     unit_id UUID REFERENCES master_units(id),
+    expiry_date DATE,
 
     version INT DEFAULT 0,
     is_deleted BOOLEAN DEFAULT FALSE,
@@ -252,7 +255,6 @@ CREATE TABLE batch_events (
     
     image_cids JSONB,  -- Mảng chứa các CID ảnh upload lên IPFS
     metadata JSONB,    -- Linh hoạt lưu Trọng lượng, Nhiệt độ, Phân bón,...
-    onchain_event_hash VARCHAR(255), -- Hash riêng cho sự kiện (Tùy chọn)
     
     is_deleted BOOLEAN DEFAULT FALSE,
     created_by VARCHAR(255),
