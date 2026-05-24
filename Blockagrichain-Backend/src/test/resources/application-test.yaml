@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/traceability_test_db
+    username: postgres
+    password: 150705
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+jwt:
+  signerKey: "fAhsFQLtyhPPawzKmGDEU/IDeBpV7nGnIaQIWYZCzh8qGSb+ETsbFOoMfwfNsUgA"
+  valid-duration: 3600
+  refreshable-duration: 2592000
+
+pinata:
+  api:
+    url: "https://api.pinata.cloud/pinning/pinFileToIPFS"
+    jwt: "dummy-jwt-for-test"
+  gateway: "https://gateway.pinata.cloud/ipfs/"
+
+spring.mail:
+  host: smtp.gmail.com
+  port: 587
+  username: test@test.com
+  password: test
+
+blockchain:
+  rpc-url: http://127.0.0.1:8545
+  contract-address: "0x5FbDB2315678afecb367f032d93F642f64180aa3"

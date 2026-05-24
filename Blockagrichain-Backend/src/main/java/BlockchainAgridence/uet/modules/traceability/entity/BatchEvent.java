@@ -59,9 +59,6 @@ public class BatchEvent {
     @Column(name = "metadata", columnDefinition = "jsonb", updatable = false)
     private Map<String, Object> metadata;
 
-    @Column(name = "onchain_event_hash", length = 255, updatable = false)
-    private String onchainEventHash;
-
     @Column(name = "is_deleted", nullable = false, updatable = false)
     private Boolean isDeleted = false;
 

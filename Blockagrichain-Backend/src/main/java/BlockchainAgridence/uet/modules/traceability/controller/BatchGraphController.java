@@ -22,7 +22,7 @@ public class BatchGraphController {
     private final BatchGraphService batchGraphService;
 
     @PostMapping("/batches/merge")
-    @PreAuthorize("hasAuthority('BATCH_UPDATE')")
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN', 'STAFF')")
     public ApiResponse<BatchResponse> mergeBatches(
             @RequestBody @Valid BatchMergeRequest request) {
 
@@ -34,7 +34,7 @@ public class BatchGraphController {
     }
 
     @PostMapping("/batches/split")
-    @PreAuthorize("hasAuthority('BATCH_UPDATE')")
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN', 'STAFF')")
     public ApiResponse<List<BatchResponse>> splitBatch(
             @RequestBody @Valid BatchSplitRequest request) {
 

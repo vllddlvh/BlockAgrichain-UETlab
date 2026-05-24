@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { ethers } from 'ethers';
 import './MetaMaskModal.css';
 
-// TODO: Replace with the actual deployed contract address on your network
-const CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000000';
+const CONTRACT_ADDRESS = import.meta.env.VITE_HASH_STORAGE_ADDRESS;
+const CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 31337);
+const CHAIN_ID_HEX = `0x${CHAIN_ID.toString(16)}`;
+const CHAIN_NAME = import.meta.env.VITE_CHAIN_NAME || 'Hardhat Local';
+const RPC_URL = import.meta.env.VITE_RPC_URL || 'http://127.0.0.1:8545';
 
 const CONTRACT_ABI = [
   "function storeHash(string calldata batchId, string calldata dataHash) external"
@@ -15,6 +18,38 @@ export default function MetaMaskModal({ isOpen, onClose, onSignSuccess, batchId,
 
   if (!isOpen) return null;
 
+  const ensureCorrectNetwork = async () => {
+    const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (currentChainId === CHAIN_ID_HEX) {
+      return;
+    }
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: CHAIN_ID_HEX }],
+      });
+    } catch (switchError) {
+      if (switchError.code !== 4902) {
+        throw switchError;
+      }
+
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [{
+          chainId: CHAIN_ID_HEX,
+          chainName: CHAIN_NAME,
+          rpcUrls: [RPC_URL],
+          nativeCurrency: {
+            name: 'ETH',
+            symbol: 'ETH',
+            decimals: 18,
+          },
+        }],
+      });
+    }
+  };
+
   const handleSign = async () => {
     setError('');
     
@@ -23,11 +58,22 @@ export default function MetaMaskModal({ isOpen, onClose, onSignSuccess, batchId,
       return;
     }
 
+    if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === ethers.ZeroAddress) {
+      setError('Thiếu địa chỉ HashStorage contract. Hãy cấu hình VITE_HASH_STORAGE_ADDRESS.');
+      return;
+    }
+
+    if (!batchId || !onchainHash) {
+      setError('Thiếu mã lô hàng hoặc hash để lưu lên blockchain.');
+      return;
+    }
+
     try {
       setIsSigning(true);
       
       // Request account access
       await window.ethereum.request({ method: 'eth_requestAccounts' });
+      await ensureCorrectNetwork();
       
       // Use ethers v6 BrowserProvider
       const provider = new ethers.BrowserProvider(window.ethereum);
@@ -39,15 +85,19 @@ export default function MetaMaskModal({ isOpen, onClose, onSignSuccess, batchId,
       const tx = await contract.storeHash(batchId, onchainHash);
       
       // Wait for the transaction to be mined
-      await tx.wait();
+      const receipt = await tx.wait();
       
       setIsSigning(false);
-      onSignSuccess(tx.hash); // Return transaction hash to the caller
+      onSignSuccess(receipt.hash); // Return transaction hash to the caller
       
     } catch (err) {
       console.error(err);
       setIsSigning(false);
-      setError(err.reason || err.message || 'Giao dịch bị từ chối hoặc có lỗi xảy ra.');
+      if (err.code === 4001) {
+        setError('Bạn đã từ chối giao dịch trong MetaMask.');
+      } else {
+        setError(err.reason || err.message || 'Giao dịch bị từ chối hoặc có lỗi xảy ra.');
+      }
     }
   };
 

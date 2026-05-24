@@ -10,6 +10,7 @@ import BlockchainAgridence.uet.modules.masterdata.entity.MasterUnit;
 import BlockchainAgridence.uet.modules.masterdata.repository.MasterUnitRepository;
 import BlockchainAgridence.uet.modules.traceability.dto.request.BatchCreateRequest;
 import BlockchainAgridence.uet.modules.traceability.dto.request.BatchEventRequest;
+import BlockchainAgridence.uet.modules.traceability.dto.request.BlockchainAnchorConfirmRequest;
 import BlockchainAgridence.uet.modules.traceability.dto.response.BatchEventResponse;
 import BlockchainAgridence.uet.modules.traceability.dto.response.BatchResponse;
 import BlockchainAgridence.uet.modules.traceability.mapper.BatchMapper;
@@ -25,15 +26,41 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BatchService {
+
+    // ---------------------------------------------------------------
+    // Status transition state machine
+    // ---------------------------------------------------------------
+    private static final Map<BatchStatus, Set<BatchStatus>> ALLOWED_TRANSITIONS;
+    static {
+        ALLOWED_TRANSITIONS = new EnumMap<>(BatchStatus.class);
+        ALLOWED_TRANSITIONS.put(BatchStatus.CREATED,
+                EnumSet.of(BatchStatus.GROWING, BatchStatus.READY_FOR_SALE, BatchStatus.IN_TRANSIT, BatchStatus.EXPIRED));
+        ALLOWED_TRANSITIONS.put(BatchStatus.GROWING,
+                EnumSet.of(BatchStatus.READY_FOR_SALE, BatchStatus.EXPIRED));
+        ALLOWED_TRANSITIONS.put(BatchStatus.READY_FOR_SALE,
+                EnumSet.of(BatchStatus.IN_TRANSIT, BatchStatus.DISTRIBUTED, BatchStatus.DEPLETED, BatchStatus.EXPIRED));
+        ALLOWED_TRANSITIONS.put(BatchStatus.IN_TRANSIT,
+                EnumSet.of(BatchStatus.DELIVERED, BatchStatus.DISTRIBUTED, BatchStatus.EXPIRED));
+        ALLOWED_TRANSITIONS.put(BatchStatus.DISTRIBUTED,
+                EnumSet.of(BatchStatus.IN_TRANSIT, BatchStatus.DELIVERED, BatchStatus.DEPLETED, BatchStatus.EXPIRED));
+        ALLOWED_TRANSITIONS.put(BatchStatus.DELIVERED,
+                EnumSet.of(BatchStatus.DEPLETED));
+        ALLOWED_TRANSITIONS.put(BatchStatus.DEPLETED, EnumSet.noneOf(BatchStatus.class));
+        ALLOWED_TRANSITIONS.put(BatchStatus.EXPIRED, EnumSet.noneOf(BatchStatus.class));
+    }
 
     BatchRepository batchRepository;
     BatchEventRepository batchEventRepository;
@@ -43,29 +70,52 @@ public class BatchService {
     MasterUnitRepository masterUnitRepository;
     BatchMapper batchMapper;
     BlockchainDataAnchorService blockchainDataAnchorService;
+    BlockchainContractService blockchainContractService;
 
-    /**
-     * Lấy userId từ JWT token của người đang đăng nhập.
-     * Ném UNAUTHENTICATED nếu không tìm thấy.
-     */
     private UUID getAuthenticatedUserId() {
         UUID userId = SecurityUtils.getCurrentUserId();
-        if (userId == null) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
+        if (userId == null) throw new AppException(ErrorCode.UNAUTHENTICATED);
         return userId;
     }
 
-    /**
-     * Lấy orgId từ JWT token của người đang đăng nhập.
-     * Ném UNAUTHENTICATED nếu user chưa thuộc tổ chức nào.
-     */
     private UUID getAuthenticatedOrgId() {
         UUID orgId = SecurityUtils.getCurrentUserOrgId();
-        if (orgId == null) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
+        if (orgId == null) throw new AppException(ErrorCode.UNAUTHENTICATED);
         return orgId;
+    }
+
+    private void validateStatusTransition(BatchStatus current, BatchStatus next) {
+        Set<BatchStatus> allowed = ALLOWED_TRANSITIONS.getOrDefault(current, EnumSet.noneOf(BatchStatus.class));
+        if (!allowed.contains(next)) {
+            log.warn("Chuyển trạng thái không hợp lệ: {} → {}", current, next);
+            throw new AppException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+    }
+
+    // FARM_ADMIN: farm stages  |  TRANSPORT_ADMIN: logistics  |  RETAIL_ADMIN: final delivery
+    private void validateRoleForStatus(BatchStatus newStatus) {
+        List<String> roles = SecurityUtils.getCurrentUserRoles();
+        if (roles.contains("ORG_ADMIN")) return; // platform admin can set any status
+
+        boolean authorized = false;
+        if (roles.contains("FARM_ADMIN") &&
+                Set.of(BatchStatus.GROWING, BatchStatus.READY_FOR_SALE, BatchStatus.EXPIRED).contains(newStatus))
+            authorized = true;
+        if (roles.contains("TRANSPORT_ADMIN") &&
+                Set.of(BatchStatus.IN_TRANSIT, BatchStatus.DISTRIBUTED, BatchStatus.EXPIRED).contains(newStatus))
+            authorized = true;
+        if (roles.contains("RETAIL_ADMIN") &&
+                Set.of(BatchStatus.DELIVERED, BatchStatus.EXPIRED).contains(newStatus))
+            authorized = true;
+        if (roles.contains("STAFF") &&
+                Set.of(BatchStatus.GROWING, BatchStatus.READY_FOR_SALE,
+                        BatchStatus.IN_TRANSIT, BatchStatus.DISTRIBUTED, BatchStatus.EXPIRED).contains(newStatus))
+            authorized = true;
+
+        if (!authorized) {
+            log.warn("Vai trò {} không được phép chuyển sang trạng thái {}", roles, newStatus);
+            throw new AppException(ErrorCode.ROLE_NOT_AUTHORIZED_FOR_STATUS);
+        }
     }
 
     @Transactional
@@ -89,23 +139,22 @@ public class BatchService {
         MasterUnit unit = masterUnitRepository.findById(request.getUnitId())
                 .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
 
-        // 1. Khởi tạo Lô hàng
         Batch batch = Batch.builder()
                 .batchCode(request.getBatchCode())
                 .product(product)
                 .creatorOrg(org)
-                .currentOwnerOrg(org) // Mới tạo thì tổ chức khởi tạo đang giữ hàng
+                .currentOwnerOrg(org)
                 .productType(request.getProductType())
                 .status(BatchStatus.CREATED)
                 .isActive(true)
                 .initialQuantity(request.getInitialQuantity())
                 .currentQuantity(request.getInitialQuantity())
                 .unit(unit)
+                .expiryDate(request.getExpiryDate())
                 .build();
 
         batch = batchRepository.save(batch);
 
-        // 2. Tự động sinh Sự kiện đầu tiên (Event Sourcing)
         BatchEvent initialEvent = BatchEvent.builder()
                 .batch(batch)
                 .actorUser(actor)
@@ -113,13 +162,11 @@ public class BatchService {
                 .createdBy(actor.getEmail())
                 .metadata(Map.of("initial_quantity", request.getInitialQuantity(), "unit_code", unit.getCode()))
                 .build();
-
         batchEventRepository.save(initialEvent);
 
-        log.info("Lô hàng mới [{}] đã được tạo bởi User [{}] thuộc Org [{}]", batch.getBatchCode(), actor.getEmail(), org.getName());
+        log.info("Lô hàng mới [{}] được tạo bởi [{}] thuộc Org [{}]", batch.getBatchCode(), actor.getEmail(), org.getName());
         return batchMapper.toBatchResponse(batch);
     }
-
 
     @Transactional
     public BatchEventResponse appendEvent(UUID batchId, BatchEventRequest request) {
@@ -132,16 +179,19 @@ public class BatchService {
             throw new AppException(ErrorCode.BATCH_INACTIVE);
         }
 
+        // DELIVERED and EXPIRED batches are immutable — no new events allowed
+        if (batch.getStatus() == BatchStatus.DELIVERED || batch.getStatus() == BatchStatus.EXPIRED) {
+            throw new AppException(ErrorCode.BATCH_NOT_MODIFIABLE);
+        }
+
         User actor = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // BẢO MẬT: Kiểm tra quyền sở hữu lô hàng — so sánh với orgId trong JWT
         if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrgId())) {
-            log.warn("Cảnh báo bảo mật: User [{}] cố ý thao tác lên lô hàng [{}] của tổ chức khác!", userId, batchId);
-            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS); // HTTP 403
+            log.warn("Security: User [{}] attempted to modify batch [{}] owned by another org", userId, batchId);
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
 
-        // Tạo sự kiện mới (Tuyệt đối không Update bảng batches)
         BatchEvent event = BatchEvent.builder()
                 .batch(batch)
                 .actorUser(actor)
@@ -154,7 +204,7 @@ public class BatchService {
                 .createdBy(actor.getEmail())
                 .build();
 
-        log.info("Sự kiện [{}] đã được ghi nhận cho Lô [{}]", request.getEventType(), batch.getBatchCode());
+        log.info("Sự kiện [{}] ghi nhận cho Lô [{}]", request.getEventType(), batch.getBatchCode());
         return batchMapper.toBatchEventResponse(batchEventRepository.save(event));
     }
 
@@ -168,34 +218,76 @@ public class BatchService {
         User actor = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // BẢO MẬT: Kiểm tra quyền sở hữu lô hàng — so sánh với orgId trong JWT
         if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrgId())) {
-            log.warn("Cảnh báo bảo mật: User [{}] cố ý đổi trạng thái lô hàng [{}] của tổ chức khác!", userId, batchId);
-            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS); // HTTP 403
+            log.warn("Security: User [{}] attempted status change on batch [{}] owned by another org", userId, batchId);
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
+
+        // 1. Validate state machine transition
+        validateStatusTransition(batch.getStatus(), newStatus);
+        // 2. Validate caller's role is allowed to set this status
+        validateRoleForStatus(newStatus);
 
         BatchStatus oldStatus = batch.getStatus();
         batch.setStatus(newStatus);
         batch = batchRepository.save(batch);
 
-        // Bắn sự kiện chuyển trạng thái để lưu vết lịch sử
         BatchEvent event = BatchEvent.builder()
                 .batch(batch)
                 .actorUser(actor)
                 .eventType(EventType.TRANSFORMED)
                 .createdBy(actor.getEmail())
-                .metadata(Map.of("old_status", oldStatus, "new_status", newStatus.name()))
+                .metadata(Map.of("old_status", oldStatus.name(), "new_status", newStatus.name()))
                 .build();
         batchEventRepository.save(event);
 
-        log.info("Lô hàng [{}] đã chuyển sang trạng thái [{}]", batch.getBatchCode(), newStatus.name());
+        log.info("Lô hàng [{}]: {} → {}", batch.getBatchCode(), oldStatus, newStatus);
 
-        // Kích hoạt Data Anchor nếu đạt trạng thái READY_FOR_SALE hoặc DEPLETED
-        if (newStatus == BatchStatus.READY_FOR_SALE || newStatus == BatchStatus.DEPLETED) {
-            blockchainDataAnchorService.anchorBatchData(batch);
+        String onchainHash = null;
+        if (newStatus == BatchStatus.READY_FOR_SALE || newStatus == BatchStatus.DELIVERED || newStatus == BatchStatus.DEPLETED) {
+            onchainHash = blockchainDataAnchorService.anchorBatchData(batch);
         }
 
-        return batchMapper.toBatchResponse(batch);
+        BatchResponse response = batchMapper.toBatchResponse(batch);
+        response.setOnchainHash(onchainHash);
+        return response;
+    }
+
+    @Transactional
+    public BatchResponse confirmBlockchainAnchor(UUID batchId, BlockchainAnchorConfirmRequest request) {
+        UUID userId = getAuthenticatedUserId();
+
+        Batch batch = batchRepository.findById(batchId)
+                .orElseThrow(() -> new AppException(ErrorCode.BATCH_NOT_FOUND));
+
+        User actor = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrgId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
+        }
+
+        if (!blockchainContractService.isConfigured()) {
+            throw new AppException(ErrorCode.BLOCKCHAIN_NOT_CONFIGURED);
+        }
+
+        String computedHash = blockchainDataAnchorService.anchorBatchData(batch);
+        if (!computedHash.equalsIgnoreCase(request.getDataHash())) {
+            throw new AppException(ErrorCode.BLOCKCHAIN_HASH_MISMATCH);
+        }
+
+        if (!blockchainContractService.verifyHash(batch.getBatchCode(), request.getDataHash())) {
+            throw new AppException(ErrorCode.BLOCKCHAIN_VERIFY_FAILED);
+        }
+
+        batch.setBlockchainTxHash(request.getTxHash());
+        batch.setBlockchainDataHash(request.getDataHash());
+        batch.setBlockchainAnchoredAt(LocalDateTime.now());
+        batch = batchRepository.save(batch);
+
+        BatchResponse response = batchMapper.toBatchResponse(batch);
+        response.setOnchainHash(computedHash);
+        return response;
     }
 
     @Transactional(readOnly = true)

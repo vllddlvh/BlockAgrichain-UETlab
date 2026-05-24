@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BlockAgrichain — MetaMask Demo</title>
+  <title>BlockAgrichain - MetaMask Demo</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -72,9 +72,7 @@
       cursor: not-allowed;
     }
 
-    button.connected {
-      background: #16a34a;
-    }
+    button.connected { background: #16a34a; }
 
     input[type="text"] {
       width: 100%;
@@ -112,7 +110,7 @@
     }
 
     .value-box.highlight { color: #60a5fa; }
-    .value-box.tx        { color: #34d399; }
+    .value-box.tx { color: #34d399; }
 
     #status {
       font-size: 0.85rem;
@@ -125,8 +123,8 @@
     }
 
     #status.success { color: #34d399; border-color: #16a34a; }
-    #status.error   { color: #f87171; border-color: #dc2626; }
-    #status.info    { color: #60a5fa; border-color: #3b82f6; }
+    #status.error { color: #f87171; border-color: #dc2626; }
+    #status.info { color: #60a5fa; border-color: #3b82f6; }
 
     .step-num {
       display: inline-block;
@@ -150,11 +148,9 @@
 </head>
 <body>
   <div class="container">
-
     <h1>BlockAgrichain</h1>
-    <h2>HashStorage — MetaMask Demo</h2>
+    <h2>HashStorage - MetaMask Demo</h2>
 
-    <!-- Step 1 -->
     <div class="card">
       <h3><span class="step-num">1</span>Connect Wallet</h3>
       <button id="btn-connect">Connect MetaMask</button>
@@ -165,37 +161,34 @@
       </div>
       <br />
       <span class="field-label">Connected address</span>
-      <div class="value-box" id="wallet-address">—</div>
+      <div class="value-box" id="wallet-address">-</div>
     </div>
 
-    <!-- Step 2 -->
     <div class="card">
-      <h3><span class="step-num">2</span>Enter Data to Hash</h3>
-      <input
-        type="text"
-        id="input-data"
-        placeholder="e.g. Rau cải Đà Lạt, 2026-05-14"
-      />
+      <h3><span class="step-num">2</span>Enter Batch Data</h3>
+      <label class="field-label" for="input-batch-id">Batch ID</label>
+      <input type="text" id="input-batch-id" placeholder="e.g. BATCH-88902" />
+
+      <label class="field-label" for="input-data">Data to hash</label>
+      <input type="text" id="input-data" placeholder="e.g. Strawberry Da Lat, 2026-05-24" />
+
       <button id="btn-store" disabled>Hash &amp; Store on Blockchain</button>
     </div>
 
-    <!-- Step 3: Results -->
     <div class="card">
       <h3><span class="step-num">3</span>Result</h3>
 
-      <span class="field-label">SHA-256 Hash (generated)</span>
-      <div class="value-box highlight" id="generated-hash">—</div>
+      <span class="field-label">SHA-256 Hash</span>
+      <div class="value-box highlight" id="generated-hash">-</div>
 
-      <span class="field-label">Transaction Hash (txHash)</span>
-      <div class="value-box tx" id="tx-hash">—</div>
+      <span class="field-label">Transaction Hash</span>
+      <div class="value-box tx" id="tx-hash">-</div>
 
       <span class="field-label">Status</span>
       <div id="status">Waiting...</div>
     </div>
-
   </div>
 
-  <!-- ethers.js v6 via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
   <script src="app.js"></script>
 </body>

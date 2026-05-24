@@ -3,7 +3,6 @@ package BlockchainAgridence.uet.modules.traceability.service;
 import BlockchainAgridence.uet.modules.traceability.entity.Batch;
 import BlockchainAgridence.uet.modules.traceability.entity.BatchEvent;
 import BlockchainAgridence.uet.modules.traceability.repository.BatchEventRepository;
-import BlockchainAgridence.uet.modules.traceability.repository.BatchRepository;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -30,7 +29,6 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BlockchainDataAnchorService {
 
-    BatchRepository batchRepository;
     BatchEventRepository batchEventRepository;
 
     private static final ObjectMapper HASH_MAPPER = new ObjectMapper();
@@ -66,8 +64,8 @@ public class BlockchainDataAnchorService {
         private String createdAt;
     }
 
-    @Transactional
-    public void anchorBatchData(Batch batch) {
+    @Transactional(readOnly = true)
+    public String anchorBatchData(Batch batch) {
         try {
             // Lấy toàn bộ sự kiện của lô hàng
             List<BatchEvent> events = batchEventRepository.findAllByBatchIdOrderByCreatedAtDesc(batch.getId());
@@ -118,10 +116,9 @@ public class BlockchainDataAnchorService {
             }
             
             String hashStr = "0x" + hexString.toString();
-            batch.setOnchainHash(hashStr);
-            batchRepository.save(batch);
 
-            log.info("Đã neo dữ liệu thành công cho lô hàng [{}]. Hash: {}", batch.getBatchCode(), hashStr);
+            log.info("Đã tính hash neo blockchain cho lô hàng [{}]. Hash: {}", batch.getBatchCode(), hashStr);
+            return hashStr;
         } catch (NoSuchAlgorithmException e) {
             log.error("Lỗi thuật toán Hashing", e);
             throw new RuntimeException("SHA-256 algorithm not found", e);

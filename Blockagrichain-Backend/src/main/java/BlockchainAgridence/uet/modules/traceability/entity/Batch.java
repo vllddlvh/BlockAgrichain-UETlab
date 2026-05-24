@@ -8,6 +8,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
@@ -49,8 +51,14 @@ public class Batch extends BaseEntity {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
-    @Column(name = "onchain_hash", length = 255)
-    private String onchainHash;
+    @Column(name = "blockchain_tx_hash", length = 255)
+    private String blockchainTxHash;
+
+    @Column(name = "blockchain_data_hash", length = 255)
+    private String blockchainDataHash;
+
+    @Column(name = "blockchain_anchored_at")
+    private LocalDateTime blockchainAnchoredAt;
 
     @Column(name = "initial_quantity", nullable = false, precision = 18, scale = 3)
     private BigDecimal initialQuantity;
@@ -61,4 +69,7 @@ public class Batch extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_id")
     private MasterUnit unit;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
 }

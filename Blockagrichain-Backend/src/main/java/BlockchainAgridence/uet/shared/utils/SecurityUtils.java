@@ -4,6 +4,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 public class SecurityUtils {
@@ -36,5 +39,20 @@ public class SecurityUtils {
             }
         }
         return null;
+    }
+
+    // Returns role codes from JWT scope claim, e.g. ["FARM_ADMIN", "STAFF"]
+    public static List<String> getCurrentUserRoles() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            String scope = jwt.getClaimAsString("scope");
+            if (scope != null && !scope.isBlank()) {
+                return Arrays.stream(scope.split(" "))
+                        .filter(s -> s.startsWith("ROLE_"))
+                        .map(s -> s.substring(5))
+                        .toList();
+            }
+        }
+        return Collections.emptyList();
     }
 }

@@ -21,7 +21,7 @@ public class ProductController {
     private final ProductService productService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ORG_ADMIN')") // Chỉ Admin của tổ chức mới được tạo danh mục
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN')")
     public ApiResponse<ProductResponse> createProduct(
             @RequestBody @Valid ProductRequest request) {
 
@@ -33,7 +33,7 @@ public class ProductController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'WAREHOUSE_STAFF')") // Nhân viên kho cũng được xem để chọn lúc tạo lô hàng
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN', 'WAREHOUSE_STAFF')")
     public ApiResponse<List<ProductResponse>> getProducts() {
 
         return ApiResponse.<List<ProductResponse>>builder()
@@ -43,7 +43,7 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'WAREHOUSE_STAFF')")
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN', 'WAREHOUSE_STAFF')")
     public ApiResponse<ProductResponse> getProductDetail(
             @PathVariable UUID id) {
 
@@ -54,7 +54,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN')")
     public ApiResponse<ProductResponse> updateProduct(
             @PathVariable UUID id,
             @RequestBody @Valid ProductRequest request) {

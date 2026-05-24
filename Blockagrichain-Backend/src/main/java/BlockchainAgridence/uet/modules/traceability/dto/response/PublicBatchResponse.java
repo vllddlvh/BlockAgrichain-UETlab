@@ -22,4 +22,7 @@ public class PublicBatchResponse {
     private BigDecimal currentQuantity;
     private String unitCode;
     private String onchainHash;
+    private String computedHash;
+    private Boolean blockchainVerified;
+    private String blockchainTxHash;
 }

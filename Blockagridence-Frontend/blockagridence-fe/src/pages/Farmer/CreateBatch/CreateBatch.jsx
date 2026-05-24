@@ -71,7 +71,7 @@ export default function CreateBatch() {
 
       // 2. Bắn sự kiện (Event) khởi tạo đầu tiên kèm metadata
       const eventRequest = {
-        eventType: 'PLANTING',
+        eventType: 'FARMING_ACTIVITY',
         metadata: {
           planting_date: plantingDate,
           fertilizer: fertilizer
@@ -92,7 +92,12 @@ export default function CreateBatch() {
 
     } catch (error) {
       console.error(error);
-      setErrorMsg(error.message || 'Có lỗi xảy ra khi tạo lô hàng.');
+      setErrorMsg(
+        error?.response?.data?.message
+        || error?.response?.data?.error
+        || error.message
+        || 'Có lỗi xảy ra khi tạo lô hàng.'
+      );
       setStatus('idle');
     }
   };

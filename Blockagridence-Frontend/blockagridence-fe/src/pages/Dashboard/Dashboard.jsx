@@ -16,12 +16,12 @@ export default function Dashboard() {
         </div>
         <div className="verify-body">
           <div className="hash-row">
-            <span>Off-chain (PostgreSQL):</span>
-            <code>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
+            <span>Hash source:</span>
+            <code>Blockchain HashStorage contract</code>
           </div>
           <div className="hash-row">
-            <span>On-chain (Blockchain):</span>
-            <code className="highlight-hash">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
+            <span>Verification:</span>
+            <code className="highlight-hash">Public trace API compares computed data hash with on-chain hash</code>
           </div>
         </div>
         <p className="verify-note">

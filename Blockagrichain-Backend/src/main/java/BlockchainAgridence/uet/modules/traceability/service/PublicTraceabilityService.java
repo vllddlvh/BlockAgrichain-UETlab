@@ -17,7 +17,6 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,9 +35,10 @@ public class PublicTraceabilityService {
     BatchRepository batchRepository;
     BatchLineageRepository batchLineageRepository;
     BatchEventRepository batchEventRepository;
+    BlockchainDataAnchorService blockchainDataAnchorService;
+    BlockchainContractService blockchainContractService;
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "traceability", key = "#batchCode")
     public TraceabilityResponse getTraceabilityData(String batchCode) {
         log.info("Bắt đầu truy xuất phả hệ cho mã lô: {}", batchCode);
 
@@ -63,17 +63,28 @@ public class PublicTraceabilityService {
         // Map Batches
         Map<UUID, PublicBatchResponse> batchMap = batches.stream().collect(Collectors.toMap(
                 Batch::getId,
-                b -> PublicBatchResponse.builder()
-                        .id(b.getId())
-                        .batchCode(b.getBatchCode())
-                        .productName(b.getProduct() != null ? b.getProduct().getName() : null)
-                        .organizationName(b.getCreatorOrg() != null ? b.getCreatorOrg().getName() : null)
-                        .productType(b.getProductType())
-                        .status(b.getStatus())
-                        .currentQuantity(b.getCurrentQuantity())
-                        .unitCode(b.getUnit() != null ? b.getUnit().getCode() : null)
-                        .onchainHash(b.getOnchainHash())
-                        .build()
+                b -> {
+                    String computedHash = blockchainDataAnchorService.anchorBatchData(b);
+                    String onchainHash = blockchainContractService.getHash(b.getBatchCode()).orElse(null);
+                    boolean verified = onchainHash != null
+                            && !onchainHash.isBlank()
+                            && blockchainContractService.verifyHash(b.getBatchCode(), computedHash);
+
+                    return PublicBatchResponse.builder()
+                            .id(b.getId())
+                            .batchCode(b.getBatchCode())
+                            .productName(b.getProduct() != null ? b.getProduct().getName() : null)
+                            .organizationName(b.getCreatorOrg() != null ? b.getCreatorOrg().getName() : null)
+                            .productType(b.getProductType())
+                            .status(b.getStatus())
+                            .currentQuantity(b.getCurrentQuantity())
+                            .unitCode(b.getUnit() != null ? b.getUnit().getCode() : null)
+                            .onchainHash(onchainHash)
+                            .computedHash(computedHash)
+                            .blockchainVerified(verified)
+                            .blockchainTxHash(b.getBlockchainTxHash())
+                            .build();
+                }
         ));
 
         // Map Lineage (Các cạnh của đồ thị)
@@ -97,7 +108,6 @@ public class PublicTraceabilityService {
                         .imageCids(e.getImageCids())
                         .metadata(e.getMetadata())
                         .createdAt(e.getCreatedAt())
-                        .onchainEventHash(e.getOnchainEventHash())
                         .build()
         ).collect(Collectors.toList());
 
