@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message, Table, Tag, Button, Space } from 'antd';
+import { UploadOutlined, PlusOutlined, EditOutlined, RetweetOutlined, SafetyCertificateOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import masterDataService from '../../../services/api/masterDataService';
 import productService from '../../../services/api/productService';
 import ipfsService from '../../../services/api/ipfsService';
@@ -236,10 +237,19 @@ export default function Products() {
       render: (_, record) => {
         // By default, if isActive is undefined, treat it as true
         const isActive = record.isActive !== false;
-        return isActive ? (
-          <Tag color="green">ĐANG SẢN XUẤT</Tag>
-        ) : (
-          <Tag color="red">NGỪNG SẢN XUẤT</Tag>
+        return (
+          <Space direction="vertical" size="small">
+            {isActive ? (
+              <Tag color="green">ĐANG SẢN XUẤT</Tag>
+            ) : (
+              <Tag color="red">NGỪNG SẢN XUẤT</Tag>
+            )}
+            {record.isApproved ? (
+              <Tag color="blue" icon={<SafetyCertificateOutlined />}>ĐÃ ĐƯỢC DUYỆT</Tag>
+            ) : (
+              <Tag color="gold" icon={<ClockCircleOutlined />}>CHỜ ADMIN DUYỆT</Tag>
+            )}
+          </Space>
         );
       }
     },

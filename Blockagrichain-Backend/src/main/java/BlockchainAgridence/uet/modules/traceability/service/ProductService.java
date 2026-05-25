@@ -136,4 +136,23 @@ public class ProductService {
         log.info("Sản phẩm [{}] đã đổi trạng thái is_active thành [{}] bởi tổ chức [{}]", productId, product.getIsActive(), orgId);
         return productMapper.toResponse(product);
     }
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getAllProductsForAdmin() {
+        return productRepository.findAll()
+                .stream()
+                .map(productMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ProductResponse approveProduct(UUID productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+        
+        product.setIsApproved(true);
+        product = productRepository.save(product);
+        
+        log.info("Sản phẩm [{}] đã được phê duyệt bởi ADMIN", productId);
+        return productMapper.toResponse(product);
+    }
 }

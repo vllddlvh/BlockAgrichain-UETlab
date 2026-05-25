@@ -46,6 +46,24 @@ const productService = {
     const response = await axiosInstance.patch(`/api/v1/products/${id}/status`);
     return response.data.body;
   },
+
+  /**
+   * Lấy danh sách toàn bộ sản phẩm (Dành cho Admin)
+   * GET /api/v1/products/admin/all
+   */
+  getAllProductsAdmin: async () => {
+    const response = await axiosInstance.get('/api/v1/products/admin/all');
+    return response.data.body;
+  },
+
+  /**
+   * Admin duyệt sản phẩm
+   * PATCH /api/v1/products/{id}/approve
+   */
+  approveProduct: async (id) => {
+    const response = await axiosInstance.patch(`/api/v1/products/${id}/approve`);
+    return response.data.body;
+  },
 };
 
 export default productService;

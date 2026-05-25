@@ -199,12 +199,12 @@ export default function CreateBatch() {
             <label>Sản Phẩm / Giống *</label>
             <select value={productId} onChange={(e) => setProductId(e.target.value)} required>
               <option value="">-- Chọn sản phẩm --</option>
-              {products.filter(p => p.isActive !== false).map(p => (
+              {products.filter(p => p.isActive !== false && p.isApproved === true).map(p => (
                 <option key={p.id} value={p.id}>{p.name} ({p.skuCode})</option>
               ))}
             </select>
-            {products.filter(p => p.isActive !== false).length === 0 && (
-               <small className="text-muted mt-1">Chưa có sản phẩm Đang sản xuất. Hãy qua tab Quản lý Sản phẩm để tạo trước.</small>
+            {products.filter(p => p.isActive !== false && p.isApproved === true).length === 0 && (
+               <small className="text-muted mt-1" style={{ color: 'red' }}>Chưa có sản phẩm nào được Admin duyệt để tạo lô hàng!</small>
             )}
           </div>
 

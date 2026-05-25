@@ -107,9 +107,10 @@ INSERT INTO user_roles (user_id, role_id) VALUES
 -- ==========================================
 -- 5. PRODUCTS (SẢN PHẨM KHAI BÁO)
 -- ==========================================
-INSERT INTO products (id, org_id, category_id, name, sku_code, description, image_cids, attributes, created_at) VALUES 
-('11111111-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000001', 'Cà phê nhân xanh Robusta', 'CF-ROBUSTA-RAW', 'Trồng tại Buôn Ma Thuột', '["QmHashAnh1"]', '{"do_am": "12.5%"}', CURRENT_TIMESTAMP - INTERVAL '60 days'),
-('11111111-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000002', 'Cà phê rang xay Highlands 500g', 'HL-ROASTED-500G', 'Rang mộc nguyên chất', '["QmHashAnh2"]', '{"han_su_dung": "12 thang"}', CURRENT_TIMESTAMP - INTERVAL '40 days');
+INSERT INTO products (id, org_id, category_id, name, sku_code, description, image_cids, attributes, is_approved, created_at) VALUES 
+('11111111-0000-0000-0000-000000000001', '550e8400-e29b-41d4-a716-446655440001', '123e4567-e89b-12d3-a456-426614174001', 'Cà phê Robusta Đắk Lắk', 'CF-ROB-01', 'Cà phê nhân xanh chất lượng cao', '["QmHashCoffee1", "QmHashCoffee2"]', '{"humidity": "12.5", "grade": "Grade 1"}', TRUE, CURRENT_TIMESTAMP - INTERVAL '60 days'),
+('11111111-0000-0000-0000-000000000002', '550e8400-e29b-41d4-a716-446655440001', '123e4567-e89b-12d3-a456-426614174001', 'Hạt tiêu đen Gia Lai', 'PP-BLK-01', 'Hạt tiêu đen nguyên hạt sấy khô', '["QmHashPepper1"]', '{"piperine_content": "5.5%", "density": "500g/l"}', TRUE, CURRENT_TIMESTAMP - INTERVAL '55 days'),
+('11111111-0000-0000-0000-000000000003', '550e8400-e29b-41d4-a716-446655440001', '123e4567-e89b-12d3-a456-426614174002', 'Thịt heo hữu cơ', 'PORK-ORG-01', 'Thịt heo nuôi theo tiêu chuẩn hữu cơ', '["QmHashPork1"]', '{"fat_percentage": "15%", "storage_temp": "-18°C"}', TRUE, CURRENT_TIMESTAMP - INTERVAL '30 days');
 
 -- ==========================================
 -- 6. CÂY PHẢ HỆ VÀ SỰ KIỆN TRUY XUẤT (TRACEABILITY GRAPH)

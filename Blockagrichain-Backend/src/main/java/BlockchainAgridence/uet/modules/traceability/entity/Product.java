@@ -48,4 +48,8 @@ public class Product extends BaseEntity {
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
+
+    @Column(name = "is_approved")
+    @Builder.Default
+    private Boolean isApproved = false;
 }

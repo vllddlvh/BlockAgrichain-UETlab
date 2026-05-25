@@ -35,6 +35,7 @@ import RetailDashboard from '../pages/Retailer/RetailDashboard/RetailDashboard';
 import RiskManagement from '../pages/Admin/RiskManagement/RiskManagement';
 import Audit from '../pages/Admin/Audit/Audit';
 import OrgApproval from '../pages/Admin/OrgApproval/OrgApproval';
+import ProductApproval from '../pages/Admin/ProductApproval/ProductApproval';
 
 // Role groups cho ProtectedRoute
 const FARM_ROLES        = ['FARM_ADMIN', 'FARM_STAFF'];
@@ -170,6 +171,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute requiredRoles={ADMIN_ROLES}>
             <DashboardLayout><OrgApproval /></DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/product-approval"
+        element={
+          <ProtectedRoute requiredRoles={ADMIN_ROLES}>
+            <DashboardLayout><ProductApproval /></DashboardLayout>
           </ProtectedRoute>
         }
       />

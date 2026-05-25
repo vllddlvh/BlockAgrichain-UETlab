@@ -443,7 +443,7 @@ export default function Batches() {
                         position: 'relative'
                       }}
                     >
-                      {activeTab === 'stock' && batch.status === 'READY_FOR_SALE' && (
+                      {activeTab === 'stock' && batch.status !== 'DEPLETED' && batch.status !== 'IN_TRANSIT' && (
                         <div style={{ position: 'absolute', top: '16px', right: '16px' }} onClick={e => e.stopPropagation()}>
                           <Checkbox 
                             checked={selectedRowKeys.includes(batch.id)}

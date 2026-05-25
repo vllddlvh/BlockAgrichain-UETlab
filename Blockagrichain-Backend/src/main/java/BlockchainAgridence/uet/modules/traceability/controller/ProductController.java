@@ -75,4 +75,22 @@ public class ProductController {
                 .body(productService.toggleProductStatus(id))
                 .build();
     }
+    @GetMapping("/admin/all")
+//     @PreAuthorize("hasRole('SYSTEM_ADMIN')") // Hoặc ORG_ADMIN tuỳ cấu hình
+    public ApiResponse<List<ProductResponse>> getAllProductsForAdmin() {
+        return ApiResponse.<List<ProductResponse>>builder()
+                .code(1000)
+                .body(productService.getAllProductsForAdmin())
+                .build();
+    }
+
+    @PatchMapping("/{id}/approve")
+//     @PreAuthorize("hasRole('SYSTEM_ADMIN')") // Hoặc ORG_ADMIN tuỳ cấu hình
+    public ApiResponse<ProductResponse> approveProduct(@PathVariable UUID id) {
+        return ApiResponse.<ProductResponse>builder()
+                .code(1000)
+                .message("Đã phê duyệt sản phẩm")
+                .body(productService.approveProduct(id))
+                .build();
+    }
 }

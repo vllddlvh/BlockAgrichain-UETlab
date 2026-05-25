@@ -193,6 +193,8 @@ CREATE TABLE products (
     -- Thông tin phụ đính kèm (Thành phần, điều kiện bảo quản, hạn sử dụng mặc định...)
     attributes JSONB, 
     
+    is_approved BOOLEAN DEFAULT FALSE,
+    
     -- Audit fields
     version BIGINT DEFAULT 0,
     created_by VARCHAR(100),

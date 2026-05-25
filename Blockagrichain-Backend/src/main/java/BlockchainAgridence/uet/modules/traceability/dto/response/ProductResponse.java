@@ -17,6 +17,7 @@ public class ProductResponse {
     private List<String> imageCids;
     private Map<String, Object> attributes;
     private Boolean isActive;
+    private Boolean isApproved;
 
     // Audit fields
     private String createdBy;
