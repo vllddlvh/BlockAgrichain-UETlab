@@ -9,7 +9,8 @@ const batchService = {
    *   productId: string,
    *   productType: 'RAW_MATERIAL' | 'PROCESSED_FOOD',
    *   initialQuantity: number,
-   *   unitId: string
+   *   unitId: string,
+   *   expiryDate: string
    * }} request 
    */
   createBatch: async (request) => {

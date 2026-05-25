@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import batchService from '../../services/api/batchService';
 import Timeline from '../../components/Timeline/Timeline';
 import './Dashboard.css';
@@ -18,6 +19,21 @@ export default function Dashboard() {
     queryFn: () => batchService.getBatchEvents(batchId),
     enabled: !!batchId,
   });
+
+  useEffect(() => {
+    if (!batch?.riskStatus) return;
+    window.blockAgrichainRiskContext = {
+      batchCode: batch.batchCode,
+      status: batch.status,
+      expiryDate: batch.expiryDate,
+      riskStatus: batch.riskStatus,
+      riskReasons: batch.riskReasons || [],
+      riskRecommendation: batch.riskRecommendation,
+    };
+    return () => {
+      delete window.blockAgrichainRiskContext;
+    };
+  }, [batch]);
 
   if (!batchId) {
     return (
@@ -45,12 +61,29 @@ export default function Dashboard() {
     );
   }
 
+  const showRiskWarning = batch.riskStatus === 'AT_RISK' || batch.riskStatus === 'EXPIRED';
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h1 className="page-title">Truy xuất Nguồn gốc Minh bạch</h1>
         <p className="page-subtitle">Thông tin lô hàng <strong>#{batch.batchCode}</strong> từ Nông trại đến Bàn ăn</p>
       </div>
+
+      {showRiskWarning && (
+        <div className={`risk-warning risk-warning--${batch.riskStatus === 'EXPIRED' ? 'expired' : 'warning'}`}>
+          <div className="risk-warning__header">
+            <strong>{batch.riskStatus === 'EXPIRED' ? 'Lô hàng đã hết hạn' : 'Lô hàng có rủi ro cần kiểm tra'}</strong>
+            <span>{batch.riskStatus}</span>
+          </div>
+          <ul>
+            {(batch.riskReasons || []).map((reason, index) => (
+              <li key={index}>{reason}</li>
+            ))}
+          </ul>
+          {batch.riskRecommendation && <p>{batch.riskRecommendation}</p>}
+        </div>
+      )}
 
       <div className="verification-card">
         <div className="verify-header">

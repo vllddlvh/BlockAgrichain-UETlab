@@ -15,6 +15,28 @@ const SUGGESTED = [
   'Blockchain xác minh dữ liệu thế nào?',
 ];
 
+const shouldAttachRiskContext = (text) => {
+  const normalized = text.toLowerCase();
+  return normalized.includes('rủi ro') ||
+    normalized.includes('rui ro') ||
+    normalized.includes('cảnh báo') ||
+    normalized.includes('canh bao') ||
+    normalized.includes('risk');
+};
+
+const buildRiskContextMessage = (context) => {
+  if (!context) return null;
+  return [
+    'Context cảnh báo vòng đời lô hàng từ hệ thống rule-based. Không tự tính lại risk và không quy kết trách nhiệm pháp lý.',
+    `Mã lô: ${context.batchCode || '-'}`,
+    `Trạng thái batch: ${context.status || '-'}`,
+    `Hạn sử dụng: ${context.expiryDate || '-'}`,
+    `riskStatus: ${context.riskStatus || '-'}`,
+    `riskReasons: ${(context.riskReasons || []).join('; ') || '-'}`,
+    `riskRecommendation: ${context.riskRecommendation || '-'}`,
+  ].join('\n');
+};
+
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([WELCOME]);
@@ -62,7 +84,13 @@ export default function ChatWidget() {
     setIsLoading(true);
 
     try {
-      const apiHistory = next.map(({ role, content }) => ({ role, content }));
+      let apiHistory = next.map(({ role, content }) => ({ role, content }));
+      const riskContext = shouldAttachRiskContext(text)
+        ? buildRiskContextMessage(window.blockAgrichainRiskContext)
+        : null;
+      if (riskContext) {
+        apiHistory = [{ role: 'user', content: riskContext }, ...apiHistory];
+      }
       const reply = await sendMessage(apiHistory);
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch (err) {

@@ -16,6 +16,10 @@ NẾU câu hỏi không liên quan đến các chủ đề trên, hãy lịch s�
 
 PHONG CÁCH: Trả lời bằng tiếng Việt, ngắn gọn, dễ hiểu cho người dùng không chuyên kỹ thuật. Dùng ví dụ thực tế khi cần thiết.`;
 
+const RISK_PROMPT = `Cảnh báo vòng đời lô hàng là rule-based từ hệ thống với riskStatus SAFE, AT_RISK, EXPIRED; riskReasons; riskRecommendation.
+
+VỀ CẢNH BÁO RỦI RO: Bạn KHÔNG tự tính risk, KHÔNG chấm điểm uy tín, KHÔNG quy kết trách nhiệm pháp lý, và KHÔNG đề xuất tự động đổi trạng thái lô hàng. Nếu có context riskStatus/riskReasons/riskRecommendation từ hệ thống, chỉ giải thích lại bằng ngôn ngữ dễ hiểu và gợi ý người dùng kiểm tra thêm.`;
+
 // Rate limiting: max 10 requests per 60 seconds
 const RATE_LIMIT_COUNT = 10;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -46,7 +50,7 @@ async function callGeminiWithRetry(apiMessages, retries = 2) {
 
   const body = {
     contents,
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\n\n${RISK_PROMPT}` }] },
     generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
   };
 

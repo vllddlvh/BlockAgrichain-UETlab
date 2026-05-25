@@ -37,6 +37,7 @@ public class PublicTraceabilityService {
     BatchEventRepository batchEventRepository;
     BlockchainDataAnchorService blockchainDataAnchorService;
     BlockchainContractService blockchainContractService;
+    BatchRiskService batchRiskService;
 
     @Transactional(readOnly = true)
     public TraceabilityResponse getTraceabilityData(String batchCode) {
@@ -69,6 +70,7 @@ public class PublicTraceabilityService {
                     boolean verified = onchainHash != null
                             && !onchainHash.isBlank()
                             && blockchainContractService.verifyHash(b.getBatchCode(), computedHash);
+                    BatchRiskService.RiskResult risk = batchRiskService.evaluate(b);
 
                     return PublicBatchResponse.builder()
                             .id(b.getId())
@@ -77,8 +79,12 @@ public class PublicTraceabilityService {
                             .organizationName(b.getCreatorOrg() != null ? b.getCreatorOrg().getName() : null)
                             .productType(b.getProductType())
                             .status(b.getStatus())
+                            .expiryDate(b.getExpiryDate())
                             .currentQuantity(b.getCurrentQuantity())
                             .unitCode(b.getUnit() != null ? b.getUnit().getCode() : null)
+                            .riskStatus(risk.getRiskStatus().name())
+                            .riskReasons(risk.getRiskReasons())
+                            .riskRecommendation(risk.getRiskRecommendation())
                             .onchainHash(onchainHash)
                             .computedHash(computedHash)
                             .blockchainVerified(verified)
