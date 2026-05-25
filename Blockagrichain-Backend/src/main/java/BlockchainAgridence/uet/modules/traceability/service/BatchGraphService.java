@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -51,6 +52,7 @@ public class BatchGraphService {
     MasterUnitRepository masterUnitRepository;
     BatchMapper batchMapper;
     BlockchainDataAnchorService blockchainDataAnchorService;
+    BatchRiskService batchRiskService;
 
     private UUID getAuthenticatedUserId() {
         UUID userId = SecurityUtils.getCurrentUserId();
@@ -66,6 +68,15 @@ public class BatchGraphService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
         return orgId;
+    }
+
+    private BatchResponse toBatchResponseWithRisk(Batch batch) {
+        BatchResponse response = batchMapper.toBatchResponse(batch);
+        BatchRiskService.RiskResult risk = batchRiskService.evaluate(batch);
+        response.setRiskStatus(risk.getRiskStatus().name());
+        response.setRiskReasons(risk.getRiskReasons());
+        response.setRiskRecommendation(risk.getRiskRecommendation());
+        return response;
     }
 
     @Transactional
@@ -132,6 +143,11 @@ public class BatchGraphService {
                 .initialQuantity(request.getProducedQuantity())
                 .currentQuantity(request.getProducedQuantity())
                 .unit(unit)
+                .expiryDate(parentBatches.stream()
+                        .map(Batch::getExpiryDate)
+                        .filter(Objects::nonNull)
+                        .min(java.time.LocalDate::compareTo)
+                        .orElse(null))
                 .build();
 
         childBatch = batchRepository.save(childBatch);
@@ -183,7 +199,7 @@ public class BatchGraphService {
             }
         }
 
-        return batchMapper.toBatchResponse(childBatch);
+        return toBatchResponseWithRisk(childBatch);
     }
 
     @Transactional
@@ -245,6 +261,7 @@ public class BatchGraphService {
                     .initialQuantity(childRequest.getQuantity())
                     .currentQuantity(childRequest.getQuantity())
                     .unit(parent.getUnit())
+                    .expiryDate(parent.getExpiryDate())
                     .build();
 
             childBatch = batchRepository.save(childBatch);
@@ -290,7 +307,7 @@ public class BatchGraphService {
             blockchainDataAnchorService.anchorBatchData(parent);
         }
 
-        return children.stream().map(batchMapper::toBatchResponse).toList();
+        return children.stream().map(this::toBatchResponseWithRisk).toList();
     }
 
     @Transactional(readOnly = true)

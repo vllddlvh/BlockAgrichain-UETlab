@@ -72,6 +72,7 @@ public class BatchService {
     BatchMapper batchMapper;
     BlockchainDataAnchorService blockchainDataAnchorService;
     BlockchainContractService blockchainContractService;
+    BatchRiskService batchRiskService;
 
     private UUID getAuthenticatedUserId() {
         UUID userId = SecurityUtils.getCurrentUserId();
@@ -117,6 +118,15 @@ public class BatchService {
             log.warn("Vai trò {} không được phép chuyển sang trạng thái {}", roles, newStatus);
             throw new AppException(ErrorCode.ROLE_NOT_AUTHORIZED_FOR_STATUS);
         }
+    }
+
+    private BatchResponse toBatchResponseWithRisk(Batch batch) {
+        BatchResponse response = batchMapper.toBatchResponse(batch);
+        BatchRiskService.RiskResult risk = batchRiskService.evaluate(batch);
+        response.setRiskStatus(risk.getRiskStatus().name());
+        response.setRiskReasons(risk.getRiskReasons());
+        response.setRiskRecommendation(risk.getRiskRecommendation());
+        return response;
     }
 
     @Transactional
@@ -166,7 +176,7 @@ public class BatchService {
         batchEventRepository.save(initialEvent);
 
         log.info("Lô hàng mới [{}] được tạo bởi [{}] thuộc Org [{}]", batch.getBatchCode(), actor.getEmail(), org.getName());
-        return batchMapper.toBatchResponse(batch);
+        return toBatchResponseWithRisk(batch);
     }
 
     @Transactional
@@ -253,7 +263,7 @@ public class BatchService {
 
         String onchainHash = blockchainDataAnchorService.anchorBatchData(batch);
 
-        BatchResponse response = batchMapper.toBatchResponse(batch);
+        BatchResponse response = toBatchResponseWithRisk(batch);
         response.setOnchainHash(onchainHash);
         return response;
     }
@@ -304,7 +314,7 @@ public class BatchService {
 
         String onchainHash = blockchainDataAnchorService.anchorBatchData(batch);
 
-        BatchResponse response = batchMapper.toBatchResponse(batch);
+        BatchResponse response = toBatchResponseWithRisk(batch);
         response.setOnchainHash(onchainHash);
         
         return response;
@@ -348,7 +358,7 @@ public class BatchService {
 
         String onchainHash = blockchainDataAnchorService.anchorBatchData(batch);
 
-        BatchResponse response = batchMapper.toBatchResponse(batch);
+        BatchResponse response = toBatchResponseWithRisk(batch);
         response.setOnchainHash(onchainHash);
         
         return response;
@@ -406,7 +416,7 @@ public class BatchService {
 
         log.info("Đã xác nhận neo blockchain cho Batch [{}]. TxHash: {}", batch.getBatchCode(), request.getTxHash());
 
-        BatchResponse response = batchMapper.toBatchResponse(batch);
+        BatchResponse response = toBatchResponseWithRisk(batch);
         response.setOnchainHash(computedHash);
         return response;
     }
@@ -415,7 +425,7 @@ public class BatchService {
     public BatchResponse getBatchDetail(UUID batchId) {
         Batch batch = batchRepository.findById(batchId)
                 .orElseThrow(() -> new AppException(ErrorCode.BATCH_NOT_FOUND));
-        return batchMapper.toBatchResponse(batch);
+        return toBatchResponseWithRisk(batch);
     }
 
     @Transactional(readOnly = true)
@@ -431,7 +441,7 @@ public class BatchService {
         UUID orgId = getAuthenticatedOrgId();
         return batchRepository.findAllByCurrentOwnerOrgId(orgId)
                 .stream()
-                .map(batchMapper::toBatchResponse)
+                .map(this::toBatchResponseWithRisk)
                 .toList();
     }
 
@@ -440,7 +450,7 @@ public class BatchService {
         UUID orgId = getAuthenticatedOrgId();
         return batchRepository.findBatchesByOrgInvolvement(orgId)
                 .stream()
-                .map(batchMapper::toBatchResponse)
+                .map(this::toBatchResponseWithRisk)
                 .toList();
     }
 }

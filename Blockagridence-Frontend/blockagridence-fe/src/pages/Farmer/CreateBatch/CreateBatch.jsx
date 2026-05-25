@@ -21,6 +21,7 @@ export default function CreateBatch() {
   const [productType, setProductType] = useState('RAW_MATERIAL');
   const [initialQuantity, setInitialQuantity] = useState('');
   const [unitId, setUnitId] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
   
   // Metadata State for the first EVENT
   const [plantingDate, setPlantingDate] = useState('');
@@ -41,8 +42,13 @@ export default function CreateBatch() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!productId || !unitId || !initialQuantity || !plantingDate) {
+    const today = new Date().toISOString().split('T')[0];
+    if (!productId || !unitId || !initialQuantity || !plantingDate || !expiryDate) {
       setErrorMsg('Vui lòng điền đầy đủ các thông tin bắt buộc.');
+      return;
+    }
+    if (expiryDate < today) {
+      setErrorMsg('Ngày hết hạn phải là hôm nay hoặc trong tương lai.');
       return;
     }
     setErrorMsg('');
@@ -64,7 +70,8 @@ export default function CreateBatch() {
         productId,
         productType,
         initialQuantity: parseFloat(initialQuantity),
-        unitId
+        unitId,
+        expiryDate
       };
       const createdBatch = await batchService.createBatch(batchRequest);
       setCreatedBatchId(createdBatch.id);
@@ -107,6 +114,7 @@ export default function CreateBatch() {
     setProductId('');
     setInitialQuantity('');
     setUnitId('');
+    setExpiryDate('');
     setPlantingDate('');
     setFertilizer('');
     setSelectedFile(null);
@@ -135,6 +143,8 @@ export default function CreateBatch() {
     };
     img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
   };
+
+  const today = new Date().toISOString().split('T')[0];
 
   if (status === 'success') {
     const traceUrl = `${window.location.origin}/trace/${createdBatchId}`;
@@ -255,6 +265,17 @@ export default function CreateBatch() {
               value={plantingDate}
               onChange={(e) => setPlantingDate(e.target.value)}
               required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Hạn sử dụng *</label>
+            <input
+              type="date"
+              value={expiryDate}
+              min={today}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              required
             />
           </div>
 

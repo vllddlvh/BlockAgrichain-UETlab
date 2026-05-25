@@ -30,6 +30,7 @@ public class BatchCreateRequest {
     @NotNull(message = "UNIT_ID_NULL")
     private UUID unitId;
 
+    @NotNull(message = "EXPIRY_DATE_NULL")
     @FutureOrPresent(message = "Ngày hết hạn phải là hôm nay hoặc trong tương lai")
     private LocalDate expiryDate;
 }

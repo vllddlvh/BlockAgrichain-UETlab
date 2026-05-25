@@ -321,6 +321,15 @@ export default function Batches() {
     }
   };
 
+  const getRiskBadge = (riskStatus) => {
+    switch (riskStatus) {
+      case 'EXPIRED': return <Tag color="red">EXPIRED</Tag>;
+      case 'AT_RISK': return <Tag color="orange">AT_RISK</Tag>;
+      case 'SAFE': return <Tag color="green">SAFE</Tag>;
+      default: return <Tag color="default">UNKNOWN</Tag>;
+    }
+  };
+
   const handleUpdateStatus = (batch, newStatus) => {
     updateStatusMutation.mutate({ id: batch.id, status: newStatus });
   };
@@ -495,14 +504,33 @@ export default function Batches() {
                     <div style={{ background: '#f3f4f6', padding: '12px 16px', borderRadius: '8px', textAlign: 'right' }}>
                       <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trạng thái</div>
                       <div style={{ marginTop: '4px' }}>{getStatusBadge(selectedBatch.status)}</div>
+                      <div style={{ marginTop: '8px' }}>{getRiskBadge(selectedBatch.riskStatus)}</div>
                       <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e5e7eb', paddingTop: '8px' }}>
                         <span style={{ fontSize: '12px', color: '#6b7280' }}>Khối lượng:</span>
                         <strong style={{ fontSize: '16px' }}>{selectedBatch.currentQuantity} / {selectedBatch.initialQuantity} {selectedBatch.unitCode}</strong>
+                      </div>
+                      <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '12px', color: '#6b7280' }}>Hạn dùng:</span>
+                        <strong>{selectedBatch.expiryDate ? new Date(selectedBatch.expiryDate).toLocaleDateString('vi-VN') : '-'}</strong>
                       </div>
                     </div>
                   </Col>
                 </Row>
                 
+                {selectedBatch.riskStatus && selectedBatch.riskStatus !== 'SAFE' && (
+                  <div style={{ marginTop: '16px', padding: '12px', borderRadius: '8px', background: selectedBatch.riskStatus === 'EXPIRED' ? '#fff1f0' : '#fff7e6', border: `1px solid ${selectedBatch.riskStatus === 'EXPIRED' ? '#ffa39e' : '#ffd591'}` }}>
+                    <strong>{selectedBatch.riskStatus === 'EXPIRED' ? 'Lô hàng đã hết hạn' : 'Lô hàng có rủi ro cần kiểm tra'}</strong>
+                    <ul style={{ margin: '8px 0 0 18px', padding: 0 }}>
+                      {(selectedBatch.riskReasons || []).map((reason, index) => (
+                        <li key={index}>{reason}</li>
+                      ))}
+                    </ul>
+                    {selectedBatch.riskRecommendation && (
+                      <div style={{ marginTop: '8px', color: '#6b7280' }}>{selectedBatch.riskRecommendation}</div>
+                    )}
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #f0f0f0', display: 'flex', gap: '12px' }}>
                   {activeTab === 'transit' ? (

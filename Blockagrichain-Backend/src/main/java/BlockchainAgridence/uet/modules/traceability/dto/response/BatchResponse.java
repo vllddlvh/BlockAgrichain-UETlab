@@ -4,6 +4,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -30,6 +31,9 @@ public class BatchResponse {
     private String unitCode;
 
     private LocalDate expiryDate;
+    private String riskStatus;
+    private List<String> riskReasons;
+    private String riskRecommendation;
 
     // Computed hash returned to the FE for blockchain anchoring; not stored in DB.
     private String onchainHash;
