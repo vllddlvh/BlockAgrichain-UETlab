@@ -92,6 +92,7 @@ public enum ErrorCode {
     INVALID_STATUS_TRANSITION(2108, "Chuyển trạng thái lô hàng không hợp lệ", HttpStatus.BAD_REQUEST),
     ROLE_NOT_AUTHORIZED_FOR_STATUS(2109, "Vai trò của bạn không được phép thiết lập trạng thái này", HttpStatus.FORBIDDEN),
     BATCH_NOT_MODIFIABLE(2110, "Lô hàng đã giao hoặc hết hạn, không thể thêm sự kiện mới", HttpStatus.BAD_REQUEST),
+    BATCH_INVALID_STATUS_TRANSITION(2111, "Chuyển đổi trạng thái lô hàng không hợp lệ", HttpStatus.BAD_REQUEST),
 
     // --- Lỗi liên quan đến IPFS ---
     FILE_EMPTY(3001, "File tải lên không được để trống", HttpStatus.BAD_REQUEST),

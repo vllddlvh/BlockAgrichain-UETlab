@@ -1,22 +1,101 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import MetaMaskModal from '../../../components/MetaMaskModal/MetaMaskModal';
+import batchService from '../../../services/api/batchService';
+import { Form, Select, Input, Button, message, Radio } from 'antd';
 import './RetailDashboard.css';
 
 export default function RetailDashboard() {
+  const queryClient = useQueryClient();
+  const [form] = Form.useForm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [status, setStatus] = useState('idle');
+  const [selectedBatchId, setSelectedBatchId] = useState(null);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setIsModalOpen(true);
-  };
+  // MetaMask signing states
+  const [signingBatchId, setSigningBatchId] = useState(null);
+  const [signingBatchDbId, setSigningBatchDbId] = useState(null);
+  const [hashToSign, setHashToSign] = useState(null);
 
-  const handleSign = () => {
-    setStatus('signing');
-    setTimeout(() => {
+  // Lấy danh sách lô hàng TRONG KHO (READY_FOR_SALE)
+  const { data: myBatches = [], isLoading: isLoadingBatches } = useQuery({
+    queryKey: ['batches'],
+    queryFn: batchService.getBatches
+  });
+
+  const shelfBatches = useMemo(() => {
+    return (Array.isArray(myBatches) ? myBatches : []).filter(
+      b => b.status === 'READY_FOR_SALE'
+    );
+  }, [myBatches]);
+
+  const selectedBatch = useMemo(() => {
+    return shelfBatches.find(b => b.id === selectedBatchId);
+  }, [shelfBatches, selectedBatchId]);
+
+  const updateMutation = useMutation({
+    mutationFn: async (payload) => {
+      // 1. Ghi sự kiện
+      const eventResponse = await batchService.appendEvent(selectedBatchId, {
+        eventType: 'STORED_AND_VERIFIED',
+        metadata: {
+          action: 'Cập nhật phân phối',
+          packaging: payload.packaging,
+          location: payload.location,
+          distStatus: payload.status
+        }
+      });
+      // 2. Đổi trạng thái lô
+      if (payload.status === 'shelf') {
+        return await batchService.updateBatchStatus(selectedBatchId, 'DISTRIBUTED');
+      }
+      // Trả về batch/event có hash mới nhất
+      return { ...selectedBatch, onchainHash: eventResponse.onchainHash };
+    },
+    onSuccess: (updatedBatch) => {
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
+      
+      // Mở Modal Ký MetaMask với hash thực từ Backend
+      setSigningBatchId(updatedBatch.batchCode);
+      setSigningBatchDbId(selectedBatchId);
+      setHashToSign(updatedBatch.onchainHash);
+      setIsModalOpen(true);
+    },
+    onError: (err) => {
+      message.error(err.response?.data?.message || err.message || 'Lỗi cập nhật');
+    }
+  });
+
+  const confirmAnchorMutation = useMutation({
+    mutationFn: async ({ txHash }) => {
+      return await batchService.confirmBlockchainAnchor(signingBatchDbId, { txHash, dataHash: hashToSign });
+    },
+    onSuccess: () => {
+      message.success('Cập nhật phân phối và Neo Blockchain thành công!');
       setIsModalOpen(false);
       setStatus('success');
-    }, 2000);
+      form.resetFields();
+      setSelectedBatchId(null);
+      setHashToSign(null);
+      setSigningBatchId(null);
+      setSigningBatchDbId(null);
+    },
+    onError: (err) => {
+      message.error(err.response?.data?.message || err.message || 'Lỗi xác nhận neo Blockchain');
+      setIsModalOpen(false);
+    }
+  });
+
+  const handleSubmit = (values) => {
+    if (!selectedBatchId) {
+      message.error('Vui lòng chọn một lô hàng!');
+      return;
+    }
+    updateMutation.mutate(values);
+  };
+
+  const handleSignSuccess = (txHash) => {
+    confirmAnchorMutation.mutate({ txHash });
   };
 
   if (status === 'success') {
@@ -28,8 +107,8 @@ export default function RetailDashboard() {
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
           </svg>
         </div>
-        <h2>Lên Kệ Thành công!</h2>
-        <p>Lô hàng <strong>#BATCH-88902</strong> đã sẵn sàng phục vụ người tiêu dùng. Trạng thái đã được xác thực trên chuỗi khối.</p>
+        <h2>Cập nhật Thành công!</h2>
+        <p>Lô hàng đã sẵn sàng phục vụ người tiêu dùng. Trạng thái đã được xác thực trên chuỗi khối.</p>
         <button className="btn-primary mt-3" onClick={() => setStatus('idle')}>Quản lý lô hàng khác</button>
       </div>
     );
@@ -44,68 +123,86 @@ export default function RetailDashboard() {
 
       <div className="dashboard-grid">
         <div className="inventory-list">
-          <h3>Hàng Trong Kho</h3>
-          <div className="inventory-card active">
-            <div className="card-top">
-              <span className="batch-id">BATCH-88902</span>
-              <span className="badge pending">Trong kho</span>
-            </div>
-            <h4>Dâu tây New Zealand</h4>
-            <p className="text-muted text-sm">Nhập lúc: 13/05/2026 - 08:30 AM</p>
-          </div>
-          <div className="inventory-card">
-            <div className="card-top">
-              <span className="batch-id">BATCH-88901</span>
-              <span className="badge success">Đã Lên Kệ</span>
-            </div>
-            <h4>Dưa lưới Đế Vương</h4>
-            <p className="text-muted text-sm">Nhập lúc: 12/05/2026 - 15:00 PM</p>
-          </div>
+          <h3>Hàng Trong Kho ({shelfBatches.length})</h3>
+          {isLoadingBatches ? (
+             <p>Đang tải dữ liệu...</p>
+          ) : shelfBatches.length > 0 ? (
+            shelfBatches.map(b => (
+              <div 
+                key={b.id} 
+                className={`inventory-card ${selectedBatchId === b.id ? 'active' : ''}`}
+                onClick={() => setSelectedBatchId(b.id)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="card-top">
+                  <span className="batch-id">{b.batchCode}</span>
+                  <span className="badge pending">Sẵn sàng</span>
+                </div>
+                <h4>{b.productName}</h4>
+                <p className="text-muted text-sm">Khối lượng: {b.currentQuantity} {b.unitCode}</p>
+              </div>
+            ))
+          ) : (
+             <p className="text-muted">Không có hàng nào trong kho.</p>
+          )}
         </div>
 
-        <form className="retail-form" onSubmit={handleSubmit}>
-          <h3>Cập nhật Trạng thái Lô: BATCH-88902</h3>
-          
-          <div className="form-group">
-            <label>Tình trạng đóng gói (Tùy chọn)</label>
-            <select className="form-select">
-              <option>Giữ nguyên bao bì gốc (10kg/thùng)</option>
-              <option>Đóng gói lại (Hộp 500g)</option>
-              <option>Đóng gói lại (Hộp 1kg)</option>
-            </select>
-          </div>
-
-          <div className="form-group mt-3">
-            <label>Trạng thái phân phối</label>
-            <div className="status-options">
-              <label className="radio-option">
-                <input type="radio" name="status" value="storage" defaultChecked />
-                <span>Lưu kho lạnh</span>
-              </label>
-              <label className="radio-option active-option">
-                <input type="radio" name="status" value="shelf" />
-                <span>Lên kệ (On-shelf)</span>
-              </label>
+        <Form 
+          form={form} 
+          layout="vertical" 
+          className="retail-form" 
+          onFinish={handleSubmit}
+          initialValues={{ status: 'shelf', packaging: 'Giữ nguyên bao bì gốc' }}
+        >
+          <h3>Cập nhật Trạng thái Lô hàng</h3>
+          {selectedBatch ? (
+            <div style={{ marginBottom: '24px', padding: '12px', background: '#f5f5f5', borderRadius: '8px' }}>
+              <strong>Đang chọn: </strong> {selectedBatch.batchCode} ({selectedBatch.productName})
             </div>
-          </div>
+          ) : (
+            <div style={{ marginBottom: '24px', padding: '12px', background: '#fffbe6', borderRadius: '8px', color: '#faad14' }}>
+              Vui lòng chọn một lô hàng bên cột trái.
+            </div>
+          )}
+          
+          <Form.Item name="packaging" label="Tình trạng đóng gói">
+            <Select>
+              <Select.Option value="Giữ nguyên bao bì gốc">Giữ nguyên bao bì gốc</Select.Option>
+              <Select.Option value="Đóng gói lại (Hộp nhỏ)">Đóng gói lại (Hộp nhỏ)</Select.Option>
+              <Select.Option value="Cắt lát / Sơ chế">Cắt lát / Sơ chế</Select.Option>
+            </Select>
+          </Form.Item>
 
-          <div className="form-group mt-3">
-            <label>Vị trí trưng bày (Tùy chọn)</label>
-            <input type="text" placeholder="Vd: Quầy trái cây tươi, Tầng 1" />
-          </div>
+          <Form.Item name="status" label="Trạng thái phân phối" rules={[{ required: true }]}>
+            <Radio.Group style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <Radio.Button value="storage" style={{ textAlign: 'center' }}>Lưu kho lạnh</Radio.Button>
+              <Radio.Button value="shelf" style={{ textAlign: 'center' }}>Lên kệ (On-shelf) & Xuất kho</Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+
+          <Form.Item name="location" label="Vị trí trưng bày (Tùy chọn)">
+            <Input placeholder="Vd: Quầy trái cây tươi, Tầng 1" />
+          </Form.Item>
 
           <div className="form-actions">
-            <button type="submit" className="btn-primary w-100">
-              Cập nhật & Ký xác thực
-            </button>
+            <Button 
+              type="primary" 
+              htmlType="submit" 
+              style={{ width: '100%', height: '48px', fontSize: '16px' }} 
+              disabled={!selectedBatchId || updateMutation.isPending}
+            >
+              {updateMutation.isPending ? 'Đang xử lý...' : 'Cập nhật & Ký xác thực'}
+            </Button>
           </div>
-        </form>
+        </Form>
       </div>
 
       <MetaMaskModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
-        onSign={handleSign}
+        onSignSuccess={handleSignSuccess}
+        batchId={signingBatchId}
+        onchainHash={hashToSign}
       />
     </div>
   );

@@ -1,14 +1,78 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import MetaMaskModal from '../../../components/MetaMaskModal/MetaMaskModal';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import batchService from '../../../services/api/batchService';
+import { Table, Input, Button, message, Space, Tag } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import './ReceiveGoods.css';
 
 export default function ReceiveGoods() {
+  const queryClient = useQueryClient();
   const [scannedBatch, setScannedBatch] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [status, setStatus] = useState('idle');
   const [isLoading, setIsLoading] = useState(false);
+  const [manualBatchId, setManualBatchId] = useState('');
+  
+  // MetaMask signing states
+  const [signingBatchId, setSigningBatchId] = useState(null);
+  const [signingBatchDbId, setSigningBatchDbId] = useState(null);
+  const [hashToSign, setHashToSign] = useState(null);
+
+  // Lấy danh sách lô hàng chờ nhận
+  const { data: myBatches = [], isLoading: isLoadingBatches } = useQuery({
+    queryKey: ['batches'],
+    queryFn: batchService.getBatches
+  });
+
+  const batchesInTransit = useMemo(() => {
+    return (Array.isArray(myBatches) ? myBatches : []).filter(b => b?.status === 'IN_TRANSIT');
+  }, [myBatches]);
+
+  const receiveMutation = useMutation({
+    mutationFn: async (id) => {
+      return await batchService.receiveBatch(id);
+    },
+    onSuccess: (updatedBatch) => {
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
+      // Ghi sự kiện
+      batchService.appendEvent(updatedBatch.id, {
+        eventType: 'RECEIVE',
+        metadata: {
+          action: 'Nhập kho siêu thị',
+          condition: 'Đạt chuẩn'
+        }
+      });
+      
+      // Mở Modal Ký MetaMask với hash thực từ Backend
+      setSigningBatchId(updatedBatch.batchCode);
+      setSigningBatchDbId(updatedBatch.id);
+      setHashToSign(updatedBatch.onchainHash);
+      setIsModalOpen(true);
+    },
+    onError: (err) => {
+      message.error(err.response?.data?.message || err.message || 'Lỗi xác nhận nhập kho');
+    }
+  });
+
+  const confirmAnchorMutation = useMutation({
+    mutationFn: async ({ txHash }) => {
+      return await batchService.confirmBlockchainAnchor(signingBatchDbId, { txHash, dataHash: hashToSign });
+    },
+    onSuccess: () => {
+      message.success('Đã xác nhận nhập kho và Neo Blockchain thành công!');
+      setIsModalOpen(false);
+      setStatus('success');
+      setHashToSign(null);
+      setSigningBatchId(null);
+      setSigningBatchDbId(null);
+    },
+    onError: (err) => {
+      message.error(err.response?.data?.message || err.message || 'Lỗi xác nhận neo Blockchain');
+      setIsModalOpen(false);
+    }
+  });
 
   useEffect(() => {
     let scanner = null;
@@ -36,7 +100,7 @@ export default function ReceiveGoods() {
             setScannedBatch(batch);
           } catch (error) {
             console.error(error);
-            alert('Không tìm thấy dữ liệu lô hàng từ mã QR này!');
+            message.error('Không tìm thấy dữ liệu lô hàng từ mã QR này!');
             setTimeout(initScanner, 500);
           } finally {
             setIsLoading(false);
@@ -53,33 +117,31 @@ export default function ReceiveGoods() {
     }
   }, [scannedBatch, status]);
 
-  const handleAccept = () => {
-    setIsModalOpen(true);
+  const handleManualSearch = async () => {
+    if (!manualBatchId.trim()) return;
+    setIsLoading(true);
+    try {
+      const match = batchesInTransit.find(b => b.batchCode === manualBatchId.trim() || b.id === manualBatchId.trim());
+      if (match) {
+        setScannedBatch(match);
+      } else {
+        const batch = await batchService.getBatchDetail(manualBatchId.trim());
+        setScannedBatch(batch);
+      }
+    } catch (error) {
+      console.error(error);
+      message.error('Không tìm thấy dữ liệu lô hàng!');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSign = async () => {
-    setStatus('signing');
-    try {
-      // Cập nhật trạng thái thành Nhập kho / Sẵn sàng lên kệ
-      await batchService.updateBatchStatus(scannedBatch.id, 'ON_SHELF');
-      
-      // Ghi nhận sự kiện nhập kho
-      await batchService.appendEvent(scannedBatch.id, {
-        eventType: 'RECEIVE',
-        metadata: {
-          action: 'Nhập kho siêu thị',
-          condition: 'Đạt chuẩn'
-        }
-      });
+  const handleAccept = () => {
+    receiveMutation.mutate(scannedBatch.id);
+  };
 
-      setIsModalOpen(false);
-      setStatus('success');
-    } catch (e) {
-      console.error(e);
-      alert('Có lỗi xảy ra khi cập nhật lô hàng!');
-      setIsModalOpen(false);
-      setStatus('idle');
-    }
+  const handleSignSuccess = (txHash) => {
+    confirmAnchorMutation.mutate({ txHash });
   };
 
   if (status === 'success') {
@@ -98,17 +160,62 @@ export default function ReceiveGoods() {
     );
   }
 
+  const columns = [
+    {
+      title: 'Mã Lô',
+      dataIndex: 'batchCode',
+      key: 'batchCode',
+      render: text => <strong>{text}</strong>,
+    },
+    {
+      title: 'Sản phẩm',
+      dataIndex: 'productName',
+      key: 'productName',
+    },
+    {
+      title: 'Khối lượng',
+      key: 'quantity',
+      render: (_, record) => `${record.currentQuantity} ${record.unitCode}`
+    },
+    {
+      title: 'Trạng thái',
+      key: 'status',
+      render: () => <Tag color="processing">Đang chờ nhận</Tag>
+    },
+    {
+      title: 'Thao tác',
+      key: 'action',
+      render: (_, record) => (
+        <Button type="primary" onClick={() => setScannedBatch(record)}>
+          Chọn lô này
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Nhập hàng vào Kho (Nhà Bán Lẻ)</h1>
-        <p className="page-subtitle">Quét mã QR từ Đơn vị Vận chuyển để xác nhận nhận hàng</p>
+        <p className="page-subtitle">Quét mã QR hoặc chọn từ danh sách để nhận hàng</p>
       </div>
 
       <div className="transfer-grid">
         <div className="scanner-card">
-          <h3>Máy Quét Mã QR</h3>
+          <h3>Công cụ Tìm kiếm Lô hàng</h3>
           
+          <Space.Compact style={{ width: '100%', marginBottom: '16px' }}>
+            <Input 
+              placeholder="Nhập mã lô hàng thủ công (VD: BATCH-123)" 
+              value={manualBatchId}
+              onChange={(e) => setManualBatchId(e.target.value)}
+              onPressEnter={handleManualSearch}
+            />
+            <Button type="primary" onClick={handleManualSearch} loading={isLoading} icon={<SearchOutlined />}>
+              Tìm
+            </Button>
+          </Space.Compact>
+
           {!scannedBatch && !isLoading && (
              <div id="reader-receive" style={{ width: '100%', border: 'none' }}></div>
           )}
@@ -122,47 +229,56 @@ export default function ReceiveGoods() {
 
           {scannedBatch && (
             <div style={{ padding: '2rem', textAlign: 'center', background: '#e8f8f5', borderRadius: '8px', color: '#27ae60' }}>
-              <p><strong>Quét thành công!</strong></p>
-              <button className="btn-secondary mt-2" onClick={() => setScannedBatch(null)}>Quét lại</button>
+              <p><strong>Đã lấy dữ liệu thành công!</strong></p>
+              <button className="btn-secondary mt-2" onClick={() => setScannedBatch(null)}>Chọn lô khác</button>
             </div>
           )}
         </div>
 
-        <div className="result-card">
-          <h3>Thông tin Bàn giao</h3>
+        <div className="result-card" style={{ flex: 1, minWidth: '0' }}>
           {scannedBatch ? (
-            <div className="batch-info-result">
-              <div className="info-row">
-                <span className="info-label">Mã Lô Hàng:</span>
-                <span className="info-value font-semibold text-primary">{scannedBatch.batchCode}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Sản phẩm:</span>
-                <span className="info-value">{scannedBatch.product?.name}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Bên giao (Chủ sở hữu cũ):</span>
-                <span className="info-value">{scannedBatch.currentOwnerOrg?.name}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Khối lượng:</span>
-                <span className="info-value">{scannedBatch.currentQuantity} {scannedBatch.unit?.code}</span>
-              </div>
+            <>
+              <h3>Thông tin Bàn giao</h3>
+              <div className="batch-info-result">
+                <div className="info-row">
+                  <span className="info-label">Mã Lô Hàng:</span>
+                  <span className="info-value font-semibold text-primary">{scannedBatch.batchCode}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Sản phẩm:</span>
+                  <span className="info-value">{scannedBatch.productName}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Bên giao:</span>
+                  <span className="info-value">{scannedBatch.currentOwnerOrgName}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Khối lượng:</span>
+                  <span className="info-value">{scannedBatch.currentQuantity} {scannedBatch.unitCode}</span>
+                </div>
 
-              <div className="action-area mt-4">
-                <p className="warning-note">
-                  Hãy kiểm tra thực tế hàng hóa. Nhấn xác nhận để ký nhận chuyển giao quyền sở hữu lô hàng.
-                </p>
-                <button className="btn-primary w-100" onClick={handleAccept}>
-                  Xác nhận Nhập Kho (Ký Ví)
-                </button>
+                <div className="action-area mt-4">
+                  <p className="warning-note">
+                    Hãy kiểm tra thực tế hàng hóa. Nhấn xác nhận để ký nhận chuyển giao quyền sở hữu lô hàng.
+                  </p>
+                  <button className="btn-primary w-100" onClick={handleAccept} disabled={receiveMutation.isPending}>
+                    {receiveMutation.isPending ? 'Đang xử lý...' : 'Xác nhận Nhập Kho (Ký Ví)'}
+                  </button>
+                </div>
               </div>
-            </div>
+            </>
           ) : (
-            <div className="empty-state">
-              <p>Chưa có dữ liệu.</p>
-              <p className="text-muted text-sm">Vui lòng quét mã QR trên lô hàng để nhận dữ liệu.</p>
-            </div>
+            <>
+              <h3>Danh sách Lô hàng Chờ nhận</h3>
+              <Table 
+                dataSource={batchesInTransit} 
+                columns={columns} 
+                rowKey="id"
+                loading={isLoadingBatches}
+                pagination={{ pageSize: 5 }}
+                style={{ marginTop: '16px' }}
+              />
+            </>
           )}
         </div>
       </div>
@@ -170,7 +286,9 @@ export default function ReceiveGoods() {
       <MetaMaskModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
-        onSignSuccess={handleSign}
+        onSignSuccess={handleSignSuccess}
+        batchId={signingBatchId}
+        onchainHash={hashToSign}
       />
     </div>
   );

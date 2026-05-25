@@ -22,4 +22,7 @@ public class BatchEventResponse {
     private List<String> imageCids;
     private Map<String, Object> metadata;
     private LocalDateTime createdAt;
+    
+    // Thêm trường này để trả về hash khi gọi hàm appendEvent
+    private String onchainHash;
 }

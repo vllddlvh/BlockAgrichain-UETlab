@@ -348,7 +348,7 @@ CREATE TABLE user_notification_settings (
 -- 18. BẢNG TOKEN BLACKLIST (Danh sách đen Access Token)
 CREATE TABLE token_blacklist (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    token VARCHAR(500) UNIQUE NOT NULL, -- JWT Access Token có thể khá dài
+    token VARCHAR(2000) UNIQUE NOT NULL, -- JWT Access Token có thể khá dài
     expiry_date TIMESTAMP NOT NULL,     -- Lưu thời gian hết hạn của token để sau này chạy Job dọn rác
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

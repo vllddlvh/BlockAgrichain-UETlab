@@ -20,6 +20,17 @@ const masterDataService = {
     const response = await axiosInstance.get('/api/v1/master/units');
     return response.data.body;
   },
+
+  /**
+   * Lấy danh sách các tổ chức đã được xác thực (Dùng để chọn đối tác chuyển giao)
+   * GET /api/v1/organizations/verified
+   */
+  getOrganizations: async (keyword = '') => {
+    const response = await axiosInstance.get('/api/v1/organizations/verified', {
+      params: { keyword: keyword || undefined }
+    });
+    return response.data.body;
+  }
 };
 
 export default masterDataService;

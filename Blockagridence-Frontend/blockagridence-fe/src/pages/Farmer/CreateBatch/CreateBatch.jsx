@@ -217,7 +217,12 @@ export default function CreateBatch() {
           </div>
 
           <div className="form-group">
-            <label>Số lượng ban đầu *</label>
+            <label>
+              Sản lượng dự kiến (Ước tính) *
+              <div style={{ fontSize: '12px', fontWeight: 'normal', color: '#666', marginTop: '4px' }}>
+                (Khối lượng thực tế sẽ được cập nhật khi Ghi nhận sự kiện Thu hoạch)
+              </div>
+            </label>
             <div style={{ display: 'flex', gap: '10px' }}>
               <input 
                 type="number" 
@@ -244,7 +249,7 @@ export default function CreateBatch() {
           </div>
 
           <div className="form-group">
-            <label>Ngày Xuống Giống *</label>
+            <label>Ngày Bắt đầu Mùa vụ / Xuống giống *</label>
             <input 
               type="date" 
               value={plantingDate}
@@ -254,7 +259,7 @@ export default function CreateBatch() {
           </div>
 
           <div className="form-group">
-            <label>Phân Bón Sử Dụng</label>
+            <label>Vật tư / Phân bón lót ban đầu (Tùy chọn)</label>
             <input 
               type="text" 
               placeholder="Vd: Hữu cơ sinh học" 

@@ -2,6 +2,8 @@ package BlockchainAgridence.uet.modules.traceability.repository;
 
 import BlockchainAgridence.uet.modules.traceability.entity.Batch;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,6 +18,10 @@ public interface BatchRepository extends JpaRepository<Batch, UUID> {
 
     // Lấy danh sách lô hàng đang sở hữu bởi 1 tổ chức
     List<Batch> findAllByCurrentOwnerOrgId(UUID orgId);
+
+    // Lấy danh sách lịch sử lô hàng (đã từng tham gia)
+    @Query("SELECT DISTINCT b FROM Batch b LEFT JOIN BatchEvent e ON b.id = e.batch.id WHERE b.currentOwnerOrg.id = :orgId OR b.creatorOrg.id = :orgId OR e.actorUser.organization.id = :orgId")
+    List<Batch> findBatchesByOrgInvolvement(@Param("orgId") UUID orgId);
 
     boolean existsByBatchCode(String batchCode);
 }

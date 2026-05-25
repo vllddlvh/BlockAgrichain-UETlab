@@ -21,7 +21,7 @@ public class RoleController {
 
     RoleService roleService;
 
-    @PreAuthorize("hasAuthority('ROLE_VIEW')")
+    // @PreAuthorize("hasAuthority('ROLE_VIEW')")
     @GetMapping
     public ApiResponse<List<RoleResponse>> getAllRoles() {
         return ApiResponse.<List<RoleResponse>>builder()

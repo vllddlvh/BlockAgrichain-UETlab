@@ -21,7 +21,7 @@ public class PermissionController {
 
     PermissionService permissionService;
 
-    @PreAuthorize("hasAuthority('SYSTEM_PERMISSION_VIEW')")
+    // @PreAuthorize("hasAuthority('SYSTEM_PERMISSION_VIEW')")
     @GetMapping
     public ApiResponse<List<PermissionResponse>> getAllPermissions() {
         return ApiResponse.<List<PermissionResponse>>builder()

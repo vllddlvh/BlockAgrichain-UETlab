@@ -13,7 +13,9 @@ public interface BatchMapper {
     @Mapping(source = "product.id", target = "productId")
     @Mapping(source = "product.name", target = "productName")
     @Mapping(source = "creatorOrg.name", target = "creatorOrgName")
+    @Mapping(source = "creatorOrg.id", target = "creatorOrgId")
     @Mapping(source = "currentOwnerOrg.name", target = "currentOwnerOrgName")
+    @Mapping(source = "currentOwnerOrg.id", target = "currentOwnerOrgId")
     @Mapping(source = "unit.id", target = "unitId")
     @Mapping(source = "unit.code", target = "unitCode")
     BatchResponse toBatchResponse(Batch batch);

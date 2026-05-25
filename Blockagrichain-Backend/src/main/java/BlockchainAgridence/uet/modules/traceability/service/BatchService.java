@@ -10,6 +10,7 @@ import BlockchainAgridence.uet.modules.masterdata.entity.MasterUnit;
 import BlockchainAgridence.uet.modules.masterdata.repository.MasterUnitRepository;
 import BlockchainAgridence.uet.modules.traceability.dto.request.BatchCreateRequest;
 import BlockchainAgridence.uet.modules.traceability.dto.request.BatchEventRequest;
+import BlockchainAgridence.uet.modules.traceability.dto.request.BatchTransferRequest;
 import BlockchainAgridence.uet.modules.traceability.dto.request.BlockchainAnchorConfirmRequest;
 import BlockchainAgridence.uet.modules.traceability.dto.response.BatchEventResponse;
 import BlockchainAgridence.uet.modules.traceability.dto.response.BatchResponse;
@@ -205,7 +206,14 @@ public class BatchService {
                 .build();
 
         log.info("Sự kiện [{}] ghi nhận cho Lô [{}]", request.getEventType(), batch.getBatchCode());
-        return batchMapper.toBatchEventResponse(batchEventRepository.save(event));
+        
+        BatchEvent savedEvent = batchEventRepository.save(event);
+        String onchainHash = blockchainDataAnchorService.anchorBatchData(batch);
+        
+        BatchEventResponse response = batchMapper.toBatchEventResponse(savedEvent);
+        response.setOnchainHash(onchainHash);
+        
+        return response;
     }
 
     @Transactional
@@ -243,13 +251,106 @@ public class BatchService {
 
         log.info("Lô hàng [{}]: {} → {}", batch.getBatchCode(), oldStatus, newStatus);
 
-        String onchainHash = null;
-        if (newStatus == BatchStatus.READY_FOR_SALE || newStatus == BatchStatus.DELIVERED || newStatus == BatchStatus.DEPLETED) {
-            onchainHash = blockchainDataAnchorService.anchorBatchData(batch);
-        }
+        String onchainHash = blockchainDataAnchorService.anchorBatchData(batch);
 
         BatchResponse response = batchMapper.toBatchResponse(batch);
         response.setOnchainHash(onchainHash);
+        return response;
+    }
+
+    @Transactional
+    public BatchResponse transferBatch(UUID batchId, BatchTransferRequest request) {
+        UUID userId = getAuthenticatedUserId();
+
+        Batch batch = batchRepository.findById(batchId)
+                .orElseThrow(() -> new AppException(ErrorCode.BATCH_NOT_FOUND));
+
+        User actor = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrganization().getId())) {
+            log.warn("Security: User [{}] attempted to transfer batch [{}] owned by another org", userId, batchId);
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
+        }
+
+        if (!batch.getIsActive()) {
+            throw new AppException(ErrorCode.BATCH_INACTIVE);
+        }
+
+        Organization targetOrg = organizationRepository.findById(request.getTargetOrgId())
+                .orElseThrow(() -> new AppException(ErrorCode.ORG_NOT_FOUND));
+
+        Organization oldOrg = batch.getCurrentOwnerOrg();
+        batch.setCurrentOwnerOrg(targetOrg);
+        batch.setStatus(BatchStatus.IN_TRANSIT); // Force to IN_TRANSIT
+        batch = batchRepository.save(batch);
+
+        BatchEvent event = BatchEvent.builder()
+                .batch(batch)
+                .actorUser(actor)
+                .eventType(EventType.TRANSPORTING)
+                .createdBy(actor.getEmail())
+                .metadata(Map.of(
+                        "old_owner_org_id", oldOrg.getId(),
+                        "old_owner_org_name", oldOrg.getName(),
+                        "new_owner_org_id", targetOrg.getId(),
+                        "new_owner_org_name", targetOrg.getName(),
+                        "transfer_type", "HANDSHAKE_TRANSFER"
+                ))
+                .build();
+        batchEventRepository.save(event);
+
+        log.info("Lô hàng [{}] được chuyển giao từ [{}] sang [{}]. Trạng thái -> IN_TRANSIT", batch.getBatchCode(), oldOrg.getName(), targetOrg.getName());
+
+        String onchainHash = blockchainDataAnchorService.anchorBatchData(batch);
+
+        BatchResponse response = batchMapper.toBatchResponse(batch);
+        response.setOnchainHash(onchainHash);
+        
+        return response;
+    }
+
+    @Transactional
+    public BatchResponse receiveBatch(UUID batchId) {
+        UUID userId = getAuthenticatedUserId();
+
+        Batch batch = batchRepository.findById(batchId)
+                .orElseThrow(() -> new AppException(ErrorCode.BATCH_NOT_FOUND));
+
+        User actor = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrganization().getId())) {
+            log.warn("Security: User [{}] attempted to receive batch [{}] not owned by their org", userId, batchId);
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
+        }
+
+        if (batch.getStatus() != BatchStatus.IN_TRANSIT) {
+            throw new AppException(ErrorCode.BATCH_INVALID_STATUS_TRANSITION);
+        }
+
+        batch.setStatus(BatchStatus.READY_FOR_SALE);
+        batch = batchRepository.save(batch);
+
+        BatchEvent event = BatchEvent.builder()
+                .batch(batch)
+                .actorUser(actor)
+                .eventType(EventType.STORED_AND_VERIFIED)
+                .createdBy(actor.getEmail())
+                .metadata(Map.of(
+                        "action", "Nhận hàng vào kho",
+                        "note", "Đã xác nhận đủ số lượng và chất lượng"
+                ))
+                .build();
+        batchEventRepository.save(event);
+
+        log.info("Lô hàng [{}] đã được nhận bởi [{}]. Trạng thái -> READY_FOR_SALE", batch.getBatchCode(), actor.getOrganization().getName());
+
+        String onchainHash = blockchainDataAnchorService.anchorBatchData(batch);
+
+        BatchResponse response = batchMapper.toBatchResponse(batch);
+        response.setOnchainHash(onchainHash);
+        
         return response;
     }
 
@@ -309,6 +410,15 @@ public class BatchService {
     public List<BatchResponse> getBatchesByOrgId() {
         UUID orgId = getAuthenticatedOrgId();
         return batchRepository.findAllByCurrentOwnerOrgId(orgId)
+                .stream()
+                .map(batchMapper::toBatchResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BatchResponse> getBatchHistoryByOrgId() {
+        UUID orgId = getAuthenticatedOrgId();
+        return batchRepository.findBatchesByOrgInvolvement(orgId)
                 .stream()
                 .map(batchMapper::toBatchResponse)
                 .toList();

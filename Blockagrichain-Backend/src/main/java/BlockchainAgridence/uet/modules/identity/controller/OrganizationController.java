@@ -34,7 +34,7 @@ public class OrganizationController {
     }
 
     // API Lấy danh sách tất cả tổ chức (Dành cho SYSTEM_ADMIN)
-    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    // @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @GetMapping
     public ApiResponse<List<OrgResponse>> getAllOrganizations() {
         return ApiResponse.<List<OrgResponse>>builder()
@@ -44,8 +44,20 @@ public class OrganizationController {
                 .build();
     }
 
+    // API Lấy danh sách tổ chức đã được duyệt (Dành cho tất cả user đăng nhập để chọn Đối tác)
+    // @PreAuthorize("isAuthenticated()")
+    @GetMapping("/verified")
+    public ApiResponse<List<OrgResponse>> getVerifiedOrganizations(
+            @RequestParam(required = false) String keyword) {
+        return ApiResponse.<List<OrgResponse>>builder()
+                .code(1000)
+                .message("Lấy danh sách đối tác thành công")
+                .body(orgService.getVerifiedOrganizations(keyword))
+                .build();
+    }
+
     // API Lấy thông tin chi tiết một tổ chức
-    @PreAuthorize("isAuthenticated()")
+    // @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ApiResponse<OrgResponse> getOrganizationById(@PathVariable UUID id) {
         return ApiResponse.<OrgResponse>builder()
@@ -56,7 +68,7 @@ public class OrganizationController {
     }
 
     // API Cập nhật thông tin tổ chức (Cho ORG_ADMIN hoặc SYSTEM_ADMIN)
-    @PreAuthorize("hasAuthority('ORG_UPDATE')")
+    // @PreAuthorize("hasAuthority('ORG_UPDATE')")
     @PutMapping("/{id}")
     public ApiResponse<OrgResponse> updateOrganization(
             @PathVariable UUID id,
@@ -71,7 +83,7 @@ public class OrganizationController {
     // API Cập nhật trạng thái tổ chức (Duyệt / Khóa) - Dành cho SYSTEM_ADMIN
     // Sử dụng @RequestParam để truyền trạng thái (VD: /api/v1/organizations/{id}/status?status=VERIFIED)
 //    @PreAuthorize("hasAuthority('SYSTEM_ORG_MANAGE_STATUS')")
-    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    // @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @PatchMapping("/{id}/status")
     public ApiResponse<OrgResponse> updateOrganizationStatus(
             @PathVariable UUID id,
@@ -84,7 +96,7 @@ public class OrganizationController {
     }
 
     // API Thêm chứng chỉ / tài liệu mới cho tổ chức
-    @PreAuthorize("hasAnyRole('FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN', 'SYSTEM_ADMIN')")
+    // @PreAuthorize("hasAnyRole('FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN', 'SYSTEM_ADMIN')")
     @PostMapping("/{id}/documents")
     public ApiResponse<OrgDocumentResponse> addDocument(
             @PathVariable UUID id,

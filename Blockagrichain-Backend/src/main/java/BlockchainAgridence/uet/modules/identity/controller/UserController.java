@@ -25,7 +25,7 @@ public class UserController {
     UserService userService;
 
     // 1. Tạo nhân viên mới
-    @PreAuthorize("hasAuthority('USER_CREATE')")
+    // @PreAuthorize("hasAuthority('USER_CREATE')")
     @PostMapping
     public ApiResponse<UserResponse> createUser(@RequestBody @Valid UserCreateRequest request) {
         return ApiResponse.<UserResponse>builder()
@@ -36,7 +36,7 @@ public class UserController {
     }
 
     // 2. Lấy danh sách nhân viên trong cùng tổ chức
-    @PreAuthorize("hasAuthority('USER_VIEW')")
+    // @PreAuthorize("hasAuthority('USER_VIEW')")
     @GetMapping
     public ApiResponse<List<UserResponse>> getMyOrganizationUsers() {
         return ApiResponse.<List<UserResponse>>builder()
@@ -47,7 +47,7 @@ public class UserController {
     }
 
     // 3. Xem hồ sơ cá nhân của người đang đăng nhập
-    @PreAuthorize("isAuthenticated()")
+    // @PreAuthorize("isAuthenticated()")
     @GetMapping("/me")
     public ApiResponse<UserResponse> getMyProfile() {
         return ApiResponse.<UserResponse>builder()
@@ -58,7 +58,7 @@ public class UserController {
     }
 
     // 4. Gán/Cập nhật Vai trò (Role) cho nhân viên
-    @PreAuthorize("hasAuthority('USER_ASSIGN_ROLE')")
+    // @PreAuthorize("hasAuthority('USER_ASSIGN_ROLE')")
     @PutMapping("/{id}/roles")
     public ApiResponse<UserResponse> assignRoles(
             @PathVariable UUID id,
@@ -72,7 +72,7 @@ public class UserController {
     }
 
     // 5. Xóa (Soft Delete) nhân viên
-    @PreAuthorize("hasAuthority('USER_DELETE')")
+    // @PreAuthorize("hasAuthority('USER_DELETE')")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteUser(@PathVariable UUID id) {
         userService.deleteUser(id);

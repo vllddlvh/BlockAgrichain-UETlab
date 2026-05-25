@@ -15,7 +15,9 @@ public class BatchResponse {
     private UUID productId;
     private String productName;
     private String creatorOrgName;
+    private UUID creatorOrgId;
     private String currentOwnerOrgName;
+    private UUID currentOwnerOrgId;
 
     private String productType;
     private String status;

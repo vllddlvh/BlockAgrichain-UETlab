@@ -106,6 +106,20 @@ public class OrganizationService {
     }
 
     @Transactional(readOnly = true)
+    public List<OrgResponse> getVerifiedOrganizations(String keyword) {
+        List<Organization> orgs;
+        if (keyword == null || keyword.trim().isEmpty()) {
+            orgs = organizationRepository.findAllByStatus(OrgStatus.VERIFIED);
+        } else {
+            orgs = organizationRepository.findByStatusAndNameContainingIgnoreCase(OrgStatus.VERIFIED, keyword.trim());
+        }
+        
+        return orgs.stream()
+                .map(organizationMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public OrgResponse getOrganizationById(UUID id) {
         Organization org = organizationRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ORG_NOT_FOUND));
