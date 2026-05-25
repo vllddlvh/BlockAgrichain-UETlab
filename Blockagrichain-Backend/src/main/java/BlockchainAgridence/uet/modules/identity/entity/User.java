@@ -23,8 +23,9 @@ import java.util.UUID;
 @SQLRestriction("is_deleted = false")
 public class User extends BaseEntity {
 
-    @Column(name = "org_id")
-    private UUID orgId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "org_id")
+    private Organization organization;
 
     @Column(nullable = false, unique = true)
     private String email;

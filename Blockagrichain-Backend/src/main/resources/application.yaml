@@ -4,9 +4,9 @@ spring:
 
   # Database Configuration
   datasource:
-    url: jdbc:postgresql://localhost:5432/traceability_systems
-    username: dllv
-    password: Daolelongvu2005@
+    url: jdbc:postgresql://localhost:5432/traceability_system
+    username: postgres
+    password: phuong4404
     driver-class-name: org.postgresql.Driver
 
   # JPA / Hibernate

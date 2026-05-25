@@ -9,6 +9,7 @@ import BlockchainAgridence.uet.modules.identity.dto.response.UserResponse;
 import BlockchainAgridence.uet.modules.identity.entity.Role;
 import BlockchainAgridence.uet.modules.identity.entity.User;
 import BlockchainAgridence.uet.modules.identity.mapper.UserMapper;
+import BlockchainAgridence.uet.modules.identity.repository.OrganizationRepository;
 import BlockchainAgridence.uet.modules.identity.repository.RoleRepository;
 import BlockchainAgridence.uet.modules.identity.repository.UserRepository;
 import lombok.AccessLevel;
@@ -33,6 +34,7 @@ public class UserService {
 
     UserRepository userRepository;
     RoleRepository roleRepository;
+    OrganizationRepository organizationRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
 
@@ -52,7 +54,11 @@ public class UserService {
         // Lấy orgId của Admin đang đăng nhập và gán cho nhân viên mới
         // (Đảm bảo HR công ty nào chỉ tạo được nhân viên cho công ty đó)
         UUID currentOrgId = SecurityUtils.getCurrentUserOrgId();
-        user.setOrgId(currentOrgId);
+        if (currentOrgId != null) {
+            BlockchainAgridence.uet.modules.identity.entity.Organization org = organizationRepository.findById(currentOrgId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORG_NOT_FOUND));
+            user.setOrganization(org);
+        }
 
         // Map Roles nếu có truyền lên
         if (request.getRoleCodes() != null && !request.getRoleCodes().isEmpty()) {
@@ -69,7 +75,7 @@ public class UserService {
         UUID currentOrgId = SecurityUtils.getCurrentUserOrgId();
 
         // Multi-tenancy: Chỉ lấy user thuộc cùng Org
-        return userRepository.findAllByOrgId(currentOrgId).stream()
+        return userRepository.findAllByOrganizationId(currentOrgId).stream()
                 .map(userMapper::toResponse)
                 .collect(Collectors.toList());
     }

@@ -57,8 +57,8 @@ CREATE TABLE organizations (
     org_type VARCHAR(50) NOT NULL,
     CONSTRAINT chk_org_type CHECK (org_type IN ('FARM', 'TRANSPORTER', 'FACTORY', 'RETAILER', 'SYSTEM_ADMIN')),
     
-    status VARCHAR(50) DEFAULT 'PENDING',
-    CONSTRAINT chk_org_status CHECK (status IN ('PENDING', 'VERIFIED', 'BANNED')),
+    status VARCHAR(50) DEFAULT 'REGISTERED',
+    CONSTRAINT chk_org_status CHECK (status IN ('REGISTERED', 'PENDING_APPROVAL', 'VERIFIED', 'REJECTED', 'BANNED', 'PENDING')),
     
     reputation_score INT DEFAULT 100, 
 
@@ -197,6 +197,7 @@ CREATE TABLE products (
     version BIGINT DEFAULT 0,
     created_by VARCHAR(100),
     updated_by VARCHAR(100),
+    is_active BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP

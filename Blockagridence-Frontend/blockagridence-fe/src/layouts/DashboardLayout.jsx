@@ -24,6 +24,8 @@ export default function DashboardLayout({ children }) {
 
   const navActive = (path) => currentPath === path ? 'active' : '';
 
+  const isPending = user?.orgStatus === 'PENDING';
+
   return (
     <div className="layout-container">
       <aside className="sidebar">
@@ -33,7 +35,7 @@ export default function DashboardLayout({ children }) {
         </div>
 
         {/* HỆ THỐNG — Farmer & Admin đều xem được Dashboard truy xuất */}
-        {(isFarmer || isAdmin) && (
+        {!isPending && (isFarmer || isAdmin) && (
           <div className="sidebar-section">
             <p className="sidebar-title">HỆ THỐNG</p>
             <nav className="sidebar-nav">
@@ -48,10 +50,10 @@ export default function DashboardLayout({ children }) {
           </div>
         )}
 
-        {/* NÔNG DÂN */}
-        {isFarmer && (
+        {/* NÔNG DÂN HOẶC PENDING */}
+        {(isFarmer || isPending) && (
           <div className="sidebar-section">
-            <p className="sidebar-title">NGHIỆP VỤ NÔNG DÂN</p>
+            <p className="sidebar-title">{isPending ? 'HỒ SƠ TỔ CHỨC' : 'NGHIỆP VỤ NÔNG DÂN'}</p>
             <nav className="sidebar-nav">
               <Link to="/certificates" className={`nav-item ${navActive('/certificates')}`}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -61,33 +63,37 @@ export default function DashboardLayout({ children }) {
                 </svg>
                 Quản lý Chứng nhận
               </Link>
-              <Link to="/products" className={`nav-item ${navActive('/products')}`}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                  <line x1="7" y1="7" x2="7.01" y2="7"></line>
-                </svg>
-                Quản lý Sản phẩm
-              </Link>
-              <Link to="/create-batch" className={`nav-item ${navActive('/create-batch')}`}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line>
-                </svg>
-                Khởi tạo Lô hàng
-              </Link>
-              <Link to="/batch-detail" className={`nav-item ${navActive('/batch-detail')}`}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line>
-                </svg>
-                Quản lý Xuất xưởng
-              </Link>
+              {!isPending && isFarmer && (
+                <>
+                  <Link to="/products" className={`nav-item ${navActive('/products')}`}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                      <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                    Quản lý Sản phẩm
+                  </Link>
+                  <Link to="/create-batch" className={`nav-item ${navActive('/create-batch')}`}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    Khởi tạo Lô hàng
+                  </Link>
+                  <Link to="/batch-detail" className={`nav-item ${navActive('/batch-detail')}`}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line>
+                    </svg>
+                    Quản lý Xuất xưởng
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
         )}
 
         {/* VẬN CHUYỂN */}
-        {isTransporter && (
+        {!isPending && isTransporter && (
           <div className="sidebar-section">
             <p className="sidebar-title">NGHIỆP VỤ VẬN CHUYỂN</p>
             <nav className="sidebar-nav">
@@ -112,7 +118,7 @@ export default function DashboardLayout({ children }) {
         )}
 
         {/* NHÀ BÁN LẺ */}
-        {isRetailer && (
+        {!isPending && isRetailer && (
           <div className="sidebar-section">
             <p className="sidebar-title">NGHIỆP VỤ BÁN LẺ</p>
             <nav className="sidebar-nav">
@@ -135,10 +141,18 @@ export default function DashboardLayout({ children }) {
         )}
 
         {/* ADMIN */}
-        {isAdmin && (
+        {!isPending && isAdmin && (
           <div className="sidebar-section">
             <p className="sidebar-title">ADMIN / CƠ QUAN QL</p>
             <nav className="sidebar-nav">
+              <Link to="/org-approval" className={`nav-item ${navActive('/org-approval')}`}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <path d="M9 15L11 17L15 13"></path>
+                </svg>
+                Phê duyệt Tổ chức
+              </Link>
               <Link to="/risk-management" className={`nav-item ${navActive('/risk-management')}`}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>

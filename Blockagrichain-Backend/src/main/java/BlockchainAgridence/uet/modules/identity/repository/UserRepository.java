@@ -20,5 +20,5 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmail(String email);
 
     // Xử lý Multi-tenancy: Chỉ lấy user thuộc một tổ chức
-    List<User> findAllByOrgId(UUID orgId);
+    List<User> findAllByOrganizationId(UUID organizationId);
 }

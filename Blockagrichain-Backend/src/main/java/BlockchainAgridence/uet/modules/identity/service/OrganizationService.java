@@ -57,9 +57,9 @@ public class OrganizationService {
             throw new AppException(ErrorCode.USER_EMAIL_EXISTED);
         }
 
-        // 2. Lưu thông tin Tổ chức (Mặc định trạng thái là PENDING)
+        // 2. Lưu thông tin Tổ chức (Mặc định trạng thái là REGISTERED)
         Organization org = organizationMapper.toEntity(request);
-        org.setStatus(OrgStatus.PENDING);
+        org.setStatus(OrgStatus.REGISTERED);
         
         // Xử lý móc nối giấy tờ pháp lý ngay lúc đăng ký
         if (request.getDocuments() != null && !request.getDocuments().isEmpty()) {
@@ -84,7 +84,7 @@ public class OrganizationService {
 
         // 4. Tạo tài khoản User đại diện cho Tổ chức (Org Admin)
         User adminUser = User.builder()
-                .orgId(org.getId())
+                .organization(org)
                 .email(request.getAdminEmail())
                 .passwordHash(passwordEncoder.encode(request.getAdminPassword())) // Băm mật khẩu
                 .fullName(request.getAdminFullName())
@@ -145,5 +145,20 @@ public class OrganizationService {
         document = documentRepository.save(document);
 
         return organizationMapper.toDocumentResponse(document);
+    }
+
+    @Transactional
+    public OrgResponse submitForReview(UUID id) {
+        Organization org = organizationRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ORG_NOT_FOUND));
+
+        if (org.getStatus() != OrgStatus.REGISTERED && org.getStatus() != OrgStatus.REJECTED && org.getStatus() != OrgStatus.PENDING) {
+            throw new AppException(ErrorCode.ORG_INVALID_STATUS_TRANSITION);
+        }
+
+        org.setStatus(OrgStatus.PENDING_APPROVAL);
+        org = organizationRepository.save(org);
+
+        return organizationMapper.toResponse(org);
     }
 }

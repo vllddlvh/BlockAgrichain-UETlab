@@ -18,6 +18,8 @@ public interface UserMapper {
 
     // Gọi hàm custom ở dưới để map roles
     @Mapping(target = "roles", expression = "java(mapRolesToStrings(user.getRoles()))")
+    @Mapping(target = "orgId", source = "organization.id")
+    @Mapping(target = "orgStatus", source = "organization.status")
     UserResponse toResponse(User user);
 
     User toEntity(UserCreateRequest request);

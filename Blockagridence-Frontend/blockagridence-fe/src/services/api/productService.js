@@ -28,6 +28,24 @@ const productService = {
     const response = await axiosInstance.get('/api/v1/products');
     return response.data.body;
   },
+
+  /**
+   * Cập nhật sản phẩm
+   * PUT /api/v1/products/{id}
+   */
+  updateProduct: async (id, request) => {
+    const response = await axiosInstance.put(`/api/v1/products/${id}`, request);
+    return response.data.body;
+  },
+
+  /**
+   * Đổi trạng thái sản phẩm
+   * PATCH /api/v1/products/{id}/status
+   */
+  toggleProductStatus: async (id) => {
+    const response = await axiosInstance.patch(`/api/v1/products/${id}/status`);
+    return response.data.body;
+  },
 };
 
 export default productService;

@@ -1,0 +1,56 @@
+.org-approval-container {
+  padding: 2rem;
+}
+.org-approval-header {
+  margin-bottom: 2rem;
+}
+.org-approval-title {
+  font-size: 1.8rem;
+  color: #1f2937;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.org-approval-subtitle {
+  color: #6b7280;
+}
+.cert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.cert-item {
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #f9fafb;
+}
+.cert-item h5 {
+  margin: 0 0 0.5rem 0;
+  color: #111827;
+  font-size: 1rem;
+}
+.cert-item a {
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.cert-item a:hover {
+  text-decoration: underline;
+}
+.detail-row {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+.detail-label {
+  width: 150px;
+  font-weight: 600;
+  color: #4b5563;
+}
+.detail-value {
+  color: #111827;
+  flex: 1;
+}

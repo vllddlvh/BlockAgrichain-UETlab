@@ -121,6 +121,14 @@ const useAuthStore = create((set, get) => ({
     return getProfileFromRoles(user?.roles || []);
   },
 
+  /**
+   * Cập nhật thông tin người dùng trong state và localStorage
+   */
+  updateUser: (newUser) => {
+    set({ user: newUser });
+    localStorage.setItem('user', JSON.stringify(newUser));
+  },
+
   clearError: () => set({ error: null }),
 }));
 

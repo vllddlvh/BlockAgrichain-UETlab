@@ -44,4 +44,8 @@ public class Product extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "attributes", columnDefinition = "jsonb")
     private Map<String, Object> attributes;
+
+    @Column(name = "is_active")
+    @Builder.Default
+    private Boolean isActive = true;
 }

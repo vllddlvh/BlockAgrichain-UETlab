@@ -34,7 +34,7 @@ public class OrganizationController {
     }
 
     // API Lấy danh sách tất cả tổ chức (Dành cho SYSTEM_ADMIN)
-    @PreAuthorize("hasAuthority('SYSTEM_ORG_VIEW_ALL')")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @GetMapping
     public ApiResponse<List<OrgResponse>> getAllOrganizations() {
         return ApiResponse.<List<OrgResponse>>builder()
@@ -70,7 +70,8 @@ public class OrganizationController {
 
     // API Cập nhật trạng thái tổ chức (Duyệt / Khóa) - Dành cho SYSTEM_ADMIN
     // Sử dụng @RequestParam để truyền trạng thái (VD: /api/v1/organizations/{id}/status?status=VERIFIED)
-    @PreAuthorize("hasAuthority('SYSTEM_ORG_MANAGE_STATUS')")
+//    @PreAuthorize("hasAuthority('SYSTEM_ORG_MANAGE_STATUS')")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @PatchMapping("/{id}/status")
     public ApiResponse<OrgResponse> updateOrganizationStatus(
             @PathVariable UUID id,
@@ -83,7 +84,7 @@ public class OrganizationController {
     }
 
     // API Thêm chứng chỉ / tài liệu mới cho tổ chức
-    @PreAuthorize("hasAuthority('ORG_UPDATE') or hasAuthority('SYSTEM_ORG_UPDATE')")
+    @PreAuthorize("hasAnyRole('FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN', 'SYSTEM_ADMIN')")
     @PostMapping("/{id}/documents")
     public ApiResponse<OrgDocumentResponse> addDocument(
             @PathVariable UUID id,
@@ -92,6 +93,17 @@ public class OrganizationController {
                 .code(1000)
                 .message("Thêm tài liệu/chứng chỉ thành công")
                 .body(orgService.addDocumentToOrganization(id, request))
+                .build();
+    }
+
+    // API Gửi yêu cầu phê duyệt tổ chức (Từ REGISTERED -> PENDING_APPROVAL)
+//    @PreAuthorize("hasAuthority('ORG_UPDATE')")
+    @PostMapping("/{id}/submit-for-review")
+    public ApiResponse<OrgResponse> submitForReview(@PathVariable UUID id) {
+        return ApiResponse.<OrgResponse>builder()
+                .code(1000)
+                .message("Đã gửi yêu cầu phê duyệt tổ chức thành công")
+                .body(orgService.submitForReview(id))
                 .build();
     }
 }

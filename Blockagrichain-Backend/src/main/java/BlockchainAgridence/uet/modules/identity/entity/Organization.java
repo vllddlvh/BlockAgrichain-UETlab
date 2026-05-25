@@ -48,7 +48,7 @@ public class Organization extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     @Builder.Default
-    private OrgStatus status = OrgStatus.PENDING;
+    private OrgStatus status = OrgStatus.REGISTERED;
 
     @Column(name = "reputation_score")
     @Builder.Default

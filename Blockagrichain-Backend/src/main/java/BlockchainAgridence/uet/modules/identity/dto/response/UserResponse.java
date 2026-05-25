@@ -16,6 +16,7 @@ import java.util.UUID;
 public class UserResponse {
     private UUID id;
     private UUID orgId;
+    private String orgStatus;
     private String email;
     private String fullName;
     private Boolean isDeleted;

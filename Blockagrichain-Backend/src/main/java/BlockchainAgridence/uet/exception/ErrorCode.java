@@ -20,6 +20,7 @@ public enum ErrorCode {
     // --- Lỗi liên quan đến Tổ chức (Organization) ---
     ORG_WALLET_EXISTED(1002, "Địa chỉ ví tổ chức đã được đăng ký", HttpStatus.BAD_REQUEST),
     ORG_NOT_FOUND(1004, "Không tìm thấy Tổ chức", HttpStatus.NOT_FOUND),
+    ORG_INVALID_STATUS_TRANSITION(1052, "Trạng thái tổ chức không hợp lệ để gửi phê duyệt", HttpStatus.BAD_REQUEST),
 
     // --- Lỗi liên quan đến Người dùng (User) ---
     USER_EMAIL_EXISTED(1003, "Email này đã được sử dụng", HttpStatus.BAD_REQUEST),

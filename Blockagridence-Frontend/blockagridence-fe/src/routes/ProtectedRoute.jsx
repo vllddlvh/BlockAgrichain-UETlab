@@ -24,5 +24,11 @@ export default function ProtectedRoute({ children, requiredRoles = [] }) {
     }
   }
 
+  // Chặn user  // Nếu tổ chức chưa được duyệt, cấm truy cập mọi trang ngoại trừ /certificates
+  const lockedStatuses = ['REGISTERED', 'PENDING_APPROVAL', 'REJECTED'];
+  if (lockedStatuses.includes(user?.orgStatus) && !location.pathname.startsWith('/certificates')) {
+    return <Navigate to="/certificates" replace />;
+  }
+
   return children;
 }

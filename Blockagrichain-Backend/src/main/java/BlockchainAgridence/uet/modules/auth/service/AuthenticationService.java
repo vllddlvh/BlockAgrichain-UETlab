@@ -180,8 +180,8 @@ public class AuthenticationService {
                 .claim("scope", buildScope(user))
                 .claim("userId", user.getId().toString());
 
-        if (user.getOrgId() != null) {
-            builder.claim("orgId", user.getOrgId().toString());
+        if (user.getOrganization() != null) {
+            builder.claim("orgId", user.getOrganization().getId().toString());
         }
 
         JWTClaimsSet jwtClaimsSet = builder.build();

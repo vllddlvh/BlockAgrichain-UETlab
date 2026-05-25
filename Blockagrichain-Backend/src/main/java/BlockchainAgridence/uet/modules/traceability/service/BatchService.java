@@ -187,7 +187,7 @@ public class BatchService {
         User actor = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrgId())) {
+        if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrganization().getId())) {
             log.warn("Security: User [{}] attempted to modify batch [{}] owned by another org", userId, batchId);
             throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
@@ -218,7 +218,7 @@ public class BatchService {
         User actor = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrgId())) {
+        if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrganization().getId())) {
             log.warn("Security: User [{}] attempted status change on batch [{}] owned by another org", userId, batchId);
             throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
@@ -263,7 +263,7 @@ public class BatchService {
         User actor = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrgId())) {
+        if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrganization().getId())) {
             throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
 

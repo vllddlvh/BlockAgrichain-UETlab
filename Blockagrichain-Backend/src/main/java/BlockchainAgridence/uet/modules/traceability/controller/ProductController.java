@@ -65,4 +65,14 @@ public class ProductController {
                 .body(productService.updateProduct(id, request))
                 .build();
     }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ORG_ADMIN', 'FARM_ADMIN', 'TRANSPORT_ADMIN', 'RETAIL_ADMIN')")
+    public ApiResponse<ProductResponse> toggleProductStatus(@PathVariable UUID id) {
+        return ApiResponse.<ProductResponse>builder()
+                .code(1000)
+                .message("Đổi trạng thái sản phẩm thành công")
+                .body(productService.toggleProductStatus(id))
+                .build();
+    }
 }

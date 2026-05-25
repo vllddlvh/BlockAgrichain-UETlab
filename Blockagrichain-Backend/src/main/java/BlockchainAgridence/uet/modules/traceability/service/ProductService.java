@@ -122,4 +122,18 @@ public class ProductService {
         log.info("Sản phẩm [{}] đã được cập nhật bởi tổ chức [{}]", productId, orgId);
         return productMapper.toResponse(product);
     }
+
+    @Transactional
+    public ProductResponse toggleProductStatus(UUID productId) {
+        UUID orgId = getAuthenticatedOrgId();
+
+        Product product = productRepository.findByIdAndOrganizationId(productId, orgId)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        product.setIsActive(!product.getIsActive());
+        product = productRepository.save(product);
+
+        log.info("Sản phẩm [{}] đã đổi trạng thái is_active thành [{}] bởi tổ chức [{}]", productId, product.getIsActive(), orgId);
+        return productMapper.toResponse(product);
+    }
 }
