@@ -26,7 +26,9 @@ public class BlockchainContractService {
     static final int WORD_HEX_LENGTH = 64;
 
     private final ObjectMapper objectMapper;
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .build();
 
     @Value("${blockchain.rpc-url}")
     private String rpcUrl;

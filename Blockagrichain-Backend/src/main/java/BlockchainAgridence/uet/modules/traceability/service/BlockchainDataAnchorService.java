@@ -88,7 +88,12 @@ public class BlockchainDataAnchorService {
                 ep.setGpsLongitude(e.getGpsLongitude() != null ? e.getGpsLongitude().toPlainString() : null);
                 ep.setImageCids(e.getImageCids());
                 ep.setMetadata(e.getMetadata());
-                ep.setCreatedAt(e.getCreatedAt() != null ? e.getCreatedAt().toString() : null);
+                if (e.getCreatedAt() != null) {
+                    java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+                    ep.setCreatedAt(e.getCreatedAt().format(formatter));
+                } else {
+                    ep.setCreatedAt(null);
+                }
                 return ep;
             }).collect(Collectors.toList());
 

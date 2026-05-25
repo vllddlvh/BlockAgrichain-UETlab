@@ -106,7 +106,7 @@ public class BatchService {
                 Set.of(BatchStatus.IN_TRANSIT, BatchStatus.DISTRIBUTED, BatchStatus.EXPIRED).contains(newStatus))
             authorized = true;
         if (roles.contains("RETAIL_ADMIN") &&
-                Set.of(BatchStatus.DELIVERED, BatchStatus.EXPIRED).contains(newStatus))
+                Set.of(BatchStatus.DELIVERED, BatchStatus.DISTRIBUTED, BatchStatus.DEPLETED, BatchStatus.READY_FOR_SALE, BatchStatus.EXPIRED).contains(newStatus))
             authorized = true;
         if (roles.contains("STAFF") &&
                 Set.of(BatchStatus.GROWING, BatchStatus.READY_FOR_SALE,
@@ -207,7 +207,7 @@ public class BatchService {
 
         log.info("Sự kiện [{}] ghi nhận cho Lô [{}]", request.getEventType(), batch.getBatchCode());
         
-        BatchEvent savedEvent = batchEventRepository.save(event);
+        BatchEvent savedEvent = batchEventRepository.saveAndFlush(event);
         String onchainHash = blockchainDataAnchorService.anchorBatchData(batch);
         
         BatchEventResponse response = batchMapper.toBatchEventResponse(savedEvent);
@@ -247,7 +247,7 @@ public class BatchService {
                 .createdBy(actor.getEmail())
                 .metadata(Map.of("old_status", oldStatus.name(), "new_status", newStatus.name()))
                 .build();
-        batchEventRepository.save(event);
+        batchEventRepository.saveAndFlush(event);
 
         log.info("Lô hàng [{}]: {} → {}", batch.getBatchCode(), oldStatus, newStatus);
 
@@ -298,7 +298,7 @@ public class BatchService {
                         "transfer_type", "HANDSHAKE_TRANSFER"
                 ))
                 .build();
-        batchEventRepository.save(event);
+        batchEventRepository.saveAndFlush(event);
 
         log.info("Lô hàng [{}] được chuyển giao từ [{}] sang [{}]. Trạng thái -> IN_TRANSIT", batch.getBatchCode(), oldOrg.getName(), targetOrg.getName());
 
@@ -342,7 +342,7 @@ public class BatchService {
                         "note", "Đã xác nhận đủ số lượng và chất lượng"
                 ))
                 .build();
-        batchEventRepository.save(event);
+        batchEventRepository.saveAndFlush(event);
 
         log.info("Lô hàng [{}] đã được nhận bởi [{}]. Trạng thái -> READY_FOR_SALE", batch.getBatchCode(), actor.getOrganization().getName());
 
@@ -364,27 +364,47 @@ public class BatchService {
         User actor = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        if (!batch.getCurrentOwnerOrg().getId().equals(actor.getOrganization().getId())) {
+        boolean isCurrentOwner = batch.getCurrentOwnerOrg().getId().equals(actor.getOrganization().getId());
+        boolean isCreator = batch.getCreatorOrg().getId().equals(actor.getOrganization().getId());
+        
+        boolean isLatestEventActor = false;
+        var events = batchEventRepository.findAllByBatchIdOrderByCreatedAtDesc(batchId);
+        if (!events.isEmpty() && events.get(0).getActorUser().getOrganization().getId().equals(actor.getOrganization().getId())) {
+            isLatestEventActor = true;
+        }
+
+        if (!isCurrentOwner && !isCreator && !isLatestEventActor) {
             throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
 
-        if (!blockchainContractService.isConfigured()) {
-            throw new AppException(ErrorCode.BLOCKCHAIN_NOT_CONFIGURED);
-        }
-
         String computedHash = blockchainDataAnchorService.anchorBatchData(batch);
-        if (!computedHash.equalsIgnoreCase(request.getDataHash())) {
-            throw new AppException(ErrorCode.BLOCKCHAIN_HASH_MISMATCH);
-        }
 
-        if (!blockchainContractService.verifyHash(batch.getBatchCode(), request.getDataHash())) {
-            throw new AppException(ErrorCode.BLOCKCHAIN_VERIFY_FAILED);
+        if (blockchainContractService.isConfigured()) {
+            // Verify hash consistency: computed hash should match what FE signed
+            if (!computedHash.equalsIgnoreCase(request.getDataHash())) {
+                log.warn("Hash mismatch cho Batch [{}]: BE computed={}, FE sent={}",
+                        batch.getBatchCode(), computedHash, request.getDataHash());
+                throw new AppException(ErrorCode.BLOCKCHAIN_HASH_MISMATCH);
+            }
+
+            // Verify the hash was actually stored on-chain
+            if (!blockchainContractService.verifyHash(batch.getBatchCode(), request.getDataHash())) {
+                log.warn("Blockchain verify failed cho Batch [{}]: hash chưa được lưu trên smart contract",
+                        batch.getBatchCode());
+                throw new AppException(ErrorCode.BLOCKCHAIN_VERIFY_FAILED);
+            }
+        } else {
+            // Blockchain chưa cấu hình — chế độ dev/demo, bỏ qua verification
+            log.info("Blockchain chưa cấu hình, bỏ qua verification cho Batch [{}]. Lưu txHash trực tiếp.",
+                    batch.getBatchCode());
         }
 
         batch.setBlockchainTxHash(request.getTxHash());
         batch.setBlockchainDataHash(request.getDataHash());
         batch.setBlockchainAnchoredAt(LocalDateTime.now());
         batch = batchRepository.save(batch);
+
+        log.info("Đã xác nhận neo blockchain cho Batch [{}]. TxHash: {}", batch.getBatchCode(), request.getTxHash());
 
         BatchResponse response = batchMapper.toBatchResponse(batch);
         response.setOnchainHash(computedHash);

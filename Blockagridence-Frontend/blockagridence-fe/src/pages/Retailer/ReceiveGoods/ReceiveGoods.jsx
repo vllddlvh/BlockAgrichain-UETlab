@@ -36,14 +36,6 @@ export default function ReceiveGoods() {
     },
     onSuccess: (updatedBatch) => {
       queryClient.invalidateQueries({ queryKey: ['batches'] });
-      // Ghi sự kiện
-      batchService.appendEvent(updatedBatch.id, {
-        eventType: 'RECEIVE',
-        metadata: {
-          action: 'Nhập kho siêu thị',
-          condition: 'Đạt chuẩn'
-        }
-      });
       
       // Mở Modal Ký MetaMask với hash thực từ Backend
       setSigningBatchId(updatedBatch.batchCode);
@@ -69,8 +61,20 @@ export default function ReceiveGoods() {
       setSigningBatchDbId(null);
     },
     onError: (err) => {
-      message.error(err.response?.data?.message || err.message || 'Lỗi xác nhận neo Blockchain');
-      setIsModalOpen(false);
+      const errorCode = err.response?.data?.code;
+      const errorMsg = err.response?.data?.message || err.message || 'Lỗi xác nhận neo Blockchain';
+      
+      if (errorCode === 2105) {
+        message.warning('Blockchain chưa cấu hình. Giao dịch đã được lưu ở chế độ Demo.');
+        setIsModalOpen(false);
+        setStatus('success');
+      } else if (errorCode === 2106) {
+        message.error('Hash dữ liệu không khớp giữa FE và BE. Vui lòng thử lại.');
+      } else if (errorCode === 2107) {
+        message.error('Không xác minh được hash trên smart contract. Kiểm tra Hardhat node.');
+      } else {
+        message.error(errorMsg);
+      }
     }
   });
 

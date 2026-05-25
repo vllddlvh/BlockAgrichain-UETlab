@@ -23,7 +23,7 @@ public class TokenBlacklist {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 500)
+    @Column(nullable = false, unique = true, length = 2000)
     private String token;
 
     @Column(name = "expiry_date", nullable = false)

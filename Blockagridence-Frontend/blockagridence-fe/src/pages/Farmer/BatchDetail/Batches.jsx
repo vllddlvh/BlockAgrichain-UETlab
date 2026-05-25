@@ -517,7 +517,7 @@ export default function Batches() {
                       <Button danger onClick={() => setIsTransferModalVisible(true)}>
                         🤝 Chuyển giao
                       </Button>
-                      {selectedBatch.status === 'READY_FOR_SALE' && (
+                      {selectedBatch.status !== 'DEPLETED' && selectedBatch.status !== 'IN_TRANSIT' && (
                         <Button icon={<ScissorOutlined />} onClick={handleOpenSplitModal}>
                           ✂️ Tách Lô
                         </Button>
