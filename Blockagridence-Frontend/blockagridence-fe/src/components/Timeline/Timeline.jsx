@@ -71,13 +71,6 @@ export default function Timeline({ events = [], batch }) {
               <span className="date-text">{item.date}</span>
             </div>
             <h4>{item.title}</h4>
-            <div className="location-row">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-              <span>{item.location}</span>
-            </div>
             
             {item.details && item.details.length > 0 && (
               <div className="details-grid">
@@ -103,11 +96,6 @@ export default function Timeline({ events = [], batch }) {
                 ))}
               </div>
             )}
-
-            <div className="tx-hash" style={{ marginTop: '15px' }}>
-              <span>Tx Hash:</span>
-              <code style={{ fontSize: '0.8rem', wordBreak: 'break-all' }}>{item.hash}</code>
-            </div>
           </div>
         </div>
       ))}
