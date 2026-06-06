@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: traceability-service
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/traceability_system
+    username: postgres
+    password: your_database_password
+    driver-class-name: org.postgresql.Driver
+
+  # JPA / Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: your_email@gmail.com
+    password: your_email_app_password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: smtp.gmail.com
+
+jwt:
+  signerKey: "your_jwt_signer_key_here_must_be_long_enough"
+  valid-duration: 3600 # 1 giờ (giây)
+  refreshable-duration: 2592000 # 30 ngày (giây)
+
+pinata:
+  api:
+    url: "https://api.pinata.cloud/pinning/pinFileToIPFS"
+    jwt: "your_pinata_jwt_token_here"
+  gateway: "https://gateway.pinata.cloud/ipfs/"
+
+blockchain:
+  rpc-url: ${BLOCKCHAIN_RPC_URL:http://127.0.0.1:8545}
+  contract-address: ${HASH_STORAGE_CONTRACT_ADDRESS:0x5FbDB2315678afecb367f032d93F642f64180aa3}
