@@ -1,12 +1,13 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import batchService from '../../services/api/batchService';
 import Timeline from '../../components/Timeline/Timeline';
 import './Dashboard.css';
 
 export default function Dashboard() {
   const { batchId } = useParams();
+  const [activeTab, setActiveTab] = useState('info');
 
   const { data: batch, isLoading: isBatchLoading } = useQuery({
     queryKey: ['batch', batchId],
@@ -85,31 +86,59 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="verification-card">
-        <div className="verify-header">
-          <h3>Đối soát Minh bạch (Verification)</h3>
-          <span className="badge success">Khớp dữ liệu</span>
+      <div className="product-portal-card">
+        <div className="product-image-section">
+          {batch.productImageCids && batch.productImageCids.length > 0 ? (
+            <img src={`https://ipfs.io/ipfs/${batch.productImageCids[0]}`} alt={batch.productName} />
+          ) : (
+            <div className="no-image-placeholder">Chưa có hình ảnh</div>
+          )}
         </div>
-        <div className="verify-body">
-          <div className="hash-row">
-            <span>Sản phẩm:</span>
-            <code>{batch.product?.name} ({batch.product?.skuCode})</code>
+        <div className="product-info-section">
+          <h2 className="product-name">{batch.productName}</h2>
+          <p className="company-name">{batch.creatorOrgName}</p>
+          <div className="badge-row">
+            <span className="badge success">SẢN PHẨM CHÍNH HÃNG</span>
           </div>
-          <div className="hash-row">
-            <span>Blockchain Hash:</span>
-            <code className="highlight-hash" style={{ wordBreak: 'break-all' }}>
-              {batch.onchainHash ? batch.onchainHash : 'Đang chờ xác nhận trên chuỗi khối'}
-            </code>
+          <div className="sku-info">
+            <span className="label">Mã sản phẩm</span>
+            <span className="value">{batch.skuCode}</span>
           </div>
         </div>
-        <p className="verify-note">
-          ✓ Dữ liệu nguyên bản, không bị can thiệp. Lịch sử được bảo vệ bởi công nghệ chuỗi khối.
-        </p>
       </div>
 
-      <div className="content-section">
-        <h3 className="section-title">Dòng thời gian (Timeline)</h3>
-        <Timeline events={events} batch={batch} />
+      <div className="tabs-container">
+        <div className="tabs-header">
+          <div className={`tab-item ${activeTab === 'info' ? 'active' : ''}`} onClick={() => setActiveTab('info')}>Thông Tin Sản Phẩm</div>
+          <div className={`tab-item ${activeTab === 'trace' ? 'active' : ''}`} onClick={() => setActiveTab('trace')}>Truy Xuất Nguồn Gốc</div>
+        </div>
+        <div className="tab-content">
+          {activeTab === 'info' && (
+            <div className="product-details-content">
+              <h3>Mô tả sản phẩm</h3>
+              <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{batch.productDescription || 'Chưa có thông tin mô tả chi tiết.'}</p>
+              
+              {batch.productAttributes && Object.keys(batch.productAttributes).length > 0 && (
+                <div className="attributes-grid" style={{ marginTop: '20px' }}>
+                  <h3>Đặc tính kỹ thuật</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+                    {Object.entries(batch.productAttributes).map(([key, val]) => (
+                      <div className="attr-row" key={key} style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px' }}>
+                        <strong style={{ color: '#555' }}>{key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}:</strong> <span style={{ marginLeft: '5px', fontWeight: '600' }}>{val}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'trace' && (
+             <div className="content-section" style={{ marginTop: '10px' }}>
+               <Timeline events={events} batch={batch} />
+             </div>
+          )}
+        </div>
       </div>
     </div>
   );

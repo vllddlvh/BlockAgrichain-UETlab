@@ -15,6 +15,10 @@ public class BatchResponse {
     // Chỉ trả về các thông tin cần thiết, không trả nguyên cục Entity Product/Organization
     private UUID productId;
     private String productName;
+    private String skuCode;
+    private String productDescription;
+    private List<String> productImageCids;
+    private java.util.Map<String, Object> productAttributes;
     private String creatorOrgName;
     private UUID creatorOrgId;
     private String currentOwnerOrgName;

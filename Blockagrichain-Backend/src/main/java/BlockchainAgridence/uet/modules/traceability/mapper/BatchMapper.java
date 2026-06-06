@@ -12,6 +12,10 @@ public interface BatchMapper {
 
     @Mapping(source = "product.id", target = "productId")
     @Mapping(source = "product.name", target = "productName")
+    @Mapping(source = "product.skuCode", target = "skuCode")
+    @Mapping(source = "product.description", target = "productDescription")
+    @Mapping(source = "product.imageCids", target = "productImageCids")
+    @Mapping(source = "product.attributes", target = "productAttributes")
     @Mapping(source = "creatorOrg.name", target = "creatorOrgName")
     @Mapping(source = "creatorOrg.id", target = "creatorOrgId")
     @Mapping(source = "currentOwnerOrg.name", target = "currentOwnerOrgName")

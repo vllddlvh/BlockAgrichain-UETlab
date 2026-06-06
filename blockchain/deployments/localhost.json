@@ -3,7 +3,7 @@
   "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
   "chainId": 31337,
   "network": "localhost",
-  "deployedAt": "2026-05-26T06:27:21.918Z",
+  "deployedAt": "2026-05-26T05:52:49.443Z",
   "abi": [
     {
       "anonymous": false,
