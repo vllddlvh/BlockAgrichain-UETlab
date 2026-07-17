@@ -10,8 +10,8 @@ import PublicLayout from '../layouts/PublicLayout';
 import ProtectedRoute from './ProtectedRoute';
 
 // Auth pages
-import Login from '../pages/Auth/Login';
-import Register from '../pages/Auth/Register';
+import Login from '../pages/auth/Login';
+import Register from '../pages/auth/Register';
 
 // Public page (Consumer QR Scan)
 import Dashboard from '../pages/Dashboard/Dashboard';
@@ -32,10 +32,10 @@ import ReceiveGoods from '../pages/Retailer/ReceiveGoods/ReceiveGoods';
 import RetailDashboard from '../pages/Retailer/RetailDashboard/RetailDashboard';
 
 // Admin pages
-import RiskManagement from '../pages/Admin/RiskManagement/RiskManagement';
-import Audit from '../pages/Admin/Audit/Audit';
-import OrgApproval from '../pages/Admin/OrgApproval/OrgApproval';
-import ProductApproval from '../pages/Admin/ProductApproval/ProductApproval';
+import RiskManagement from '../pages/admin/RiskManagement/RiskManagement';
+import Audit from '../pages/admin/Audit/Audit';
+import OrgApproval from '../pages/admin/OrgApproval/OrgApproval';
+import ProductApproval from '../pages/admin/ProductApproval/ProductApproval';
 
 // Role groups cho ProtectedRoute
 const FARM_ROLES        = ['FARM_ADMIN', 'FARM_STAFF'];
